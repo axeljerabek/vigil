@@ -4,7 +4,7 @@ import json
 import urllib.request
 
 # ==============================================================================
-# VIGIL - PRODUCTION CONFIGURATION (PORTABLE & STABLE)
+# IDENTITY-GUARD PRO - PRODUCTION CONFIGURATION (PORTABLE & STABLE)
 # ==============================================================================
 
 # AUTOMATISCHE PFAD-ERKENNUNG: Findet den Projektordner selbstständig.
@@ -66,6 +66,31 @@ if os.path.exists(SETTINGS_F):
                 YOLO_URL = f"https://github.com/THU-MIG/yolov10/releases/download/v1.1/yolov10{MODEL_SIZE}.pt"
 
             MODEL_PATH = os.path.join(PROJECT_ROOT, MODEL_FILENAME)
+
+            # ALERTS_DIR_OVERRIDE: Aufnahmen auf ein anderes Laufwerk umleiten
+            # (z.B. eine große externe Platte statt der Systemplatte, auf der
+            # das Projekt selbst liegt). Bewusst mit striktem Fallback auf den
+            # Standard-Pfad bei JEDEM Problem -- config.py wird von JEDEM
+            # Prozess importiert (Master, jeder Kamera-Worker, web_ui.py),
+            # ein kaputter/nicht existierender/nicht beschreibbarer Override
+            # würde sonst die gesamte Pipeline lahmlegen, nicht nur die
+            # Aufnahme-Funktion. Ändert NICHTS an bereits existierenden
+            # Aufnahmen im alten Ordner -- die bleiben dort liegen, nur neue
+            # Aufnahmen landen ab dem nächsten Pipeline-Neustart im neuen Pfad.
+            alerts_override = (sett.get('ALERTS_DIR_OVERRIDE') or '').strip()
+            if alerts_override:
+                if not os.path.isabs(alerts_override):
+                    print(f"⚠️ ALERTS_DIR_OVERRIDE muss ein absoluter Pfad sein, ignoriere: {alerts_override}")
+                else:
+                    try:
+                        os.makedirs(alerts_override, exist_ok=True)
+                        test_file = os.path.join(alerts_override, ".vigil_write_test")
+                        with open(test_file, 'w') as tf:
+                            tf.write("ok")
+                        os.remove(test_file)
+                        ALERTS_DIR = alerts_override
+                    except Exception as e:
+                        print(f"⚠️ ALERTS_DIR_OVERRIDE '{alerts_override}' nicht beschreibbar, bleibe beim Standard-Pfad: {e}")
     except Exception as e:
         print(f"Pipeline Settings Vorab-Lese-Fehler: {e}")
 
@@ -137,7 +162,7 @@ if not os.path.exists(MODEL_PATH) or os.path.getsize(MODEL_PATH) < MODEL_MIN_BYT
 STREAMS_F = os.path.join(PROJECT_ROOT, "streams.json")
 
 STREAMS = [
-    {"name": "Example_Camera", "url": "rtmp://192.168.1.50/live/stream", "enabled": False, "audio_enabled": True, "notify_only": False, "type": "VIDEO"}
+    {"name": "Example_Camera", "url": "rtmp://192.168.1.50/live/stream", "enabled": False, "audio_enabled": True, "type": "VIDEO"}
 ]
 if os.path.exists(STREAMS_F):
     try:
@@ -191,7 +216,7 @@ COCO_CLASS_NAMES = {
     18: "Sheep", 19: "Cow", 20: "Elephant", 21: "Bear", 22: "Zebra", 23: "Giraffe",
     24: "Backpack", 25: "Umbrella", 26: "Handbag", 27: "Tie", 28: "Suitcase",
     29: "Frisbee", 30: "Skis", 31: "Snowboard", 32: "Sports ball", 33: "Kite",
-    34: "Baseball bat", 35: "Baseball glove", 36: "Skateboard", 37: "Surfboard",
+    34: "Baseballschläger", 35: "Baseball glove", 36: "Skateboard", 37: "Surfboard",
     38: "Tennis racquet", 39: "Bottle", 40: "Wine glass", 41: "Cup", 42: "Fork",
     43: "Knife", 44: "Spoon", 45: "Bowl", 46: "Banana", 47: "Apple", 48: "Sandwich",
     49: "Orange", 50: "Broccoli", 51: "Carrot", 52: "Hotdog", 53: "Pizza", 54: "Donut",

@@ -453,6 +453,22 @@
                     </div>
 
                     <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-hard-drive"></i> Storage</div>
+                        <p class="settings-hint" style="margin-top: -4px; margin-bottom: 12px;">
+                            Where recordings actually live. By default, everything is stored inside the
+                            project folder itself — on the same drive as the system, if that's where vigil
+                            is installed. Point this at a separate, larger drive if you expect to record a
+                            lot. <strong>Changing this does not move existing recordings</strong> — only new
+                            ones, from the next pipeline restart onward, go to the new location. See the
+                            Storage Status card below for live disk space per configured folder.
+                        </p>
+                        <div class="settings-group">
+                            <label>Recordings folder (leave empty for default: project folder)</label>
+                            <input type="text" name="ALERTS_DIR_OVERRIDE" value="{{ settings.get('ALERTS_DIR_OVERRIDE', '') }}" placeholder="/mnt/big-drive/vigil-recordings">
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
                         <div class="settings-section-label"><i class="fa-solid fa-file-export"></i> Export</div>
                         <p class="settings-hint" style="margin-top: -4px; margin-bottom: 12px;">
                             Copies the video, thumbnail, and all sidecar metadata for an event into its
@@ -881,6 +897,21 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </details>
+
+        <details class="collapse-card" id="storageCard" ontoggle="if (this.open) loadStorageStatus();">
+            <summary>
+                <span><i class="fa-solid fa-hard-drive"></i> Storage Status</span>
+                <i class="fa-solid fa-chevron-down chevron"></i>
+            </summary>
+            <div class="collapse-body">
+                <p class="settings-hint" style="margin-top: 0;">
+                    Disk space and write access for every configured folder — checked live, not just
+                    whether the setting has a value. An unconfigured destination (e.g. no Export or
+                    Watchfolder set up) shows as such, not as an error.
+                </p>
+                <div id="storageStatusList">Loading…</div>
             </div>
         </details>
 
@@ -1939,6 +1970,53 @@
         let currentClusters = {};
         let currentClusterIgnored = {};   // cluster_id -> bool, separat statt die vielen bestehenden Stellen umzubauen
         let showIgnoredClusters = false;
+
+        function _formatBytes(bytes) {
+            if (bytes == null) return '--';
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            let val = bytes, i = 0;
+            while (val >= 1024 && i < units.length - 1) { val /= 1024; i++; }
+            return `${val.toFixed(1)} ${units[i]}`;
+        }
+
+        function loadStorageStatus() {
+            const el = document.getElementById('storageStatusList');
+            fetch('/api/storage_status').then(r => r.json()).then(data => {
+                el.innerHTML = (data.folders || []).map(f => {
+                    if (!f.configured) {
+                        return `<div class="storage-folder-row">
+                            <div class="storage-folder-label">${escapeHtml(f.label)}</div>
+                            <div class="storage-folder-detail" style="color:var(--text-muted);">Not configured.</div>
+                        </div>`;
+                    }
+                    if (f.remote) {
+                        return `<div class="storage-folder-row">
+                            <div class="storage-folder-label">${escapeHtml(f.label)}</div>
+                            <div class="storage-folder-detail"><code>${escapeHtml(f.path)}</code> — remote (rsync) destination, disk space can't be checked from here.</div>
+                        </div>`;
+                    }
+                    if (f.error) {
+                        return `<div class="storage-folder-row">
+                            <div class="storage-folder-label">${escapeHtml(f.label)}</div>
+                            <div class="storage-folder-detail" style="color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> <code>${escapeHtml(f.path)}</code> — ${escapeHtml(f.error)}</div>
+                        </div>`;
+                    }
+                    const pct = f.used_percent ?? 0;
+                    const barColor = pct >= 90 ? 'var(--danger)' : (pct >= 75 ? 'var(--warning)' : 'var(--primary)');
+                    const writableIcon = f.writable
+                        ? '<i class="fa-solid fa-circle-check" style="color:var(--success);" title="Writable"></i>'
+                        : '<i class="fa-solid fa-circle-xmark" style="color:var(--danger);" title="Not writable"></i>';
+                    return `<div class="storage-folder-row">
+                        <div class="storage-folder-label">${escapeHtml(f.label)} ${writableIcon}</div>
+                        <div class="storage-folder-detail"><code>${escapeHtml(f.path)}</code></div>
+                        <div class="status-progress-bar" style="margin-top:6px;">
+                            <div class="status-progress-fill" style="width:${pct}%; background:${barColor};"></div>
+                        </div>
+                        <div class="storage-folder-detail" style="margin-top:4px;">${pct}% used · ${_formatBytes(f.free_bytes)} free of ${_formatBytes(f.total_bytes)}</div>
+                    </div>`;
+                }).join('') || '<p class="settings-hint">No folders configured yet.</p>';
+            }).catch(() => { el.innerHTML = '<p class="settings-hint">Could not load storage status.</p>'; });
+        }
 
         function loadPeopleData() {
             peopleLoaded = true;

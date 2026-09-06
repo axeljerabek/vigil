@@ -1377,6 +1377,55 @@ def health():
     Liefert nur 'läuft', keine sensiblen Daten."""
     return {"status": "ok"}, 200
 
+@app.route('/api/storage_status')
+@requires_auth
+def api_storage_status():
+    """Speicherplatz UND Schreibrechte für alle konfigurierbaren Ordner in
+    einem Aufruf -- Frühwarnung vor voller Platte, unabhängig davon, ob der
+    Ordner selbst schon existiert oder momentan leer ist (disk_usage prüft
+    das zugrundeliegende Dateisystem, nicht den Ordnerinhalt -- das ist
+    genau das, was für "läuft die Platte voll" zählt, und ist im Gegensatz
+    zu einer rekursiven Ordnergrößen-Berechnung auch bei sehr vielen
+    Aufnahmen sofort schnell)."""
+    settings = load_settings()
+    folders = {
+        'Recordings (ALERTS_DIR)': (settings.get('ALERTS_DIR_OVERRIDE') or '').strip() or ALERTS_DIR,
+        'Export destination': (settings.get('EXPORT_DIR') or '').strip(),
+        'Watchfolder (import source)': (settings.get('WATCH_FOLDER_PATH') or '').strip(),
+    }
+    results = []
+    for label, path in folders.items():
+        if not path:
+            results.append({'label': label, 'path': None, 'configured': False})
+            continue
+        entry = {'label': label, 'path': path, 'configured': True}
+        # rsync-Remote-Ziele (user@host:/pfad) haben kein lokales Dateisystem
+        # zum Prüfen -- als solches kennzeichnen statt einen Fehler zu zeigen.
+        if '@' in path and ':' in path and not os.path.isabs(path):
+            entry['remote'] = True
+            results.append(entry)
+            continue
+        entry['remote'] = False
+        try:
+            os.makedirs(path, exist_ok=True)
+            total, used, free = shutil.disk_usage(path)
+            entry['total_bytes'] = total
+            entry['free_bytes'] = free
+            entry['used_percent'] = round((used / total) * 100, 1) if total else None
+            test_file = os.path.join(path, '.vigil_write_test')
+            try:
+                with open(test_file, 'w') as tf:
+                    tf.write('ok')
+                os.remove(test_file)
+                entry['writable'] = True
+            except Exception:
+                entry['writable'] = False
+        except Exception as e:
+            entry['error'] = str(e)
+            entry['writable'] = False
+        results.append(entry)
+    return json.dumps({'folders': results})
+
 @app.route('/api/status')
 @requires_auth
 def api_status():
@@ -1800,6 +1849,7 @@ def save_pipeline_settings():
         "WATCH_FOLDER_DELETE_SOURCE": request.form.get('WATCH_FOLDER_DELETE_SOURCE') == 'on',
         "WATCH_FOLDER_RUN_DETECTION": request.form.get('WATCH_FOLDER_RUN_DETECTION') == 'on',
         "WATCH_FOLDER_LIVE_MODE_ENABLED": request.form.get('WATCH_FOLDER_LIVE_MODE_ENABLED') == 'on',
+        "ALERTS_DIR_OVERRIDE": request.form.get('ALERTS_DIR_OVERRIDE', '').strip(),
     }
 
     with open(SETTINGS_F, 'w') as f:
@@ -1810,7 +1860,8 @@ def save_pipeline_settings():
     # und würde sonst unnötig einen Neustart auslösen.
     PIPELINE_RELEVANT_KEYS = (
         "YOLO_VERSION", "MODEL_SIZE", "TARGET_FPS", "CONFIDENCE_THRESHOLD",
-        "PRE_ROLL_SEC", "POST_ROLL_SEC", "DETECTION_CLASSES", "WATCH_FOLDER_ENABLED"
+        "PRE_ROLL_SEC", "POST_ROLL_SEC", "DETECTION_CLASSES", "WATCH_FOLDER_ENABLED",
+        "ALERTS_DIR_OVERRIDE"
     )
     pipeline_relevant_changed = any(
         old_settings.get(k) != settings.get(k) for k in PIPELINE_RELEVANT_KEYS

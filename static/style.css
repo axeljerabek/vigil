@@ -601,6 +601,23 @@ input:checked + .slider:before { transform: translateX(21px); background: var(--
     gap: 12px;
 }
 
+.storage-folder-row {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+}
+.storage-folder-row:last-child { border-bottom: none; }
+.storage-folder-label {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.storage-folder-detail {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-top: 2px;
+}
+
 .status-metric-box {
     background: var(--card-bg-inset);
     border: 1px solid var(--border);
