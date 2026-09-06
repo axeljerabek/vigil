@@ -1038,21 +1038,30 @@
     <div id="lightbox" class="lightbox" onclick="closeLightbox(event)">
         <div class="lightbox-content" onclick="event.stopPropagation()">
             <span class="close-btn" onclick="closeLightbox(event)"><i class="fa-solid fa-xmark"></i></span>
-            <video id="videoPlayer" playsinline controls muted><source id="videoSource" src="" type="video/mp4"></video>
+            <div class="lightbox-video-wrap">
+                <button type="button" class="lightbox-nav-arrow lightbox-nav-prev" id="lightboxPrevBtn" onclick="navigateLightbox(-1)" title="Previous recording (←)"><i class="fa-solid fa-chevron-left"></i></button>
+                <video id="videoPlayer" playsinline controls muted><source id="videoSource" src="" type="video/mp4"></video>
+                <button type="button" class="lightbox-nav-arrow lightbox-nav-next" id="lightboxNextBtn" onclick="navigateLightbox(1)" title="Next recording (→)"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
             <div id="loader" class="loader"></div>
             <div id="status-text"></div>
             <div class="player-controls speed-controls">
+                <button onclick="setSpeed(0.1, this)">0.1x</button>
                 <button onclick="setSpeed(0.25, this)">0.25x</button>
                 <button onclick="setSpeed(0.5, this)">0.5x</button>
                 <button onclick="setSpeed(1.0, this)" class="active" id="defaultSpeedBtn">1x</button>
                 <button onclick="setSpeed(2.0, this)">2x</button>
                 <button onclick="setSpeed(4.0, this)">4x</button>
                 <button onclick="setSpeed(8.0, this)">8x</button>
+                <button onclick="setSpeed(16.0, this)">16x</button>
             </div>
-            <div class="player-controls">
-                <button onclick="skipTime(-10)" title="Back 10s"><i class="fa-solid fa-backward"></i> 10s</button>
-                <button onclick="skipTime(10)" title="Forward 10s">10s <i class="fa-solid fa-forward"></i></button>
+            <div class="player-controls compact-controls">
+                <button onclick="skipTime(-10)" title="Back 10s (Shift+←)"><i class="fa-solid fa-backward"></i> 10s</button>
+                <button onclick="skipTime(10)" title="Forward 10s (Shift+→)">10s <i class="fa-solid fa-forward"></i></button>
                 <a id="downloadLink" href="#" class="btn-download" title="Download video"><i class="fa-solid fa-download"></i> Download</a>
+                <button type="button" class="lightbox-btn-archive" id="lightboxArchiveBtnTop" onclick="archiveEvent(currentLightboxFilename)"><i class="fa-solid fa-box-archive"></i> Archive</button>
+                <button type="button" class="lightbox-btn-export" id="lightboxExportBtnTop" onclick="exportEvent(currentLightboxFilename, currentLightboxArchived)"><i class="fa-solid fa-file-export"></i> Export</button>
+                <button type="button" class="lightbox-btn-delete" id="lightboxDeleteBtnTop" onclick="deleteEvent(currentLightboxFilename, currentLightboxArchived)"><i class="fa-solid fa-trash-can"></i> Delete</button>
             </div>
             <details class="lightbox-ai-desc" id="lightboxAiDesc" style="display:none;">
                 <summary><i class="fa-solid fa-wand-magic-sparkles"></i> AI Description</summary>
@@ -1069,11 +1078,6 @@
                 <span id="lightboxNoteStatus" style="font-size:0.85rem; color:var(--text-muted); margin-left:8px;"></span>
             </details>
             <div id="lightboxMeta" class="lightbox-meta"></div>
-            <div class="lightbox-actions" id="lightboxActions">
-                <button type="button" class="lightbox-btn-archive" id="lightboxArchiveBtn" onclick="archiveEvent(currentLightboxFilename)"><i class="fa-solid fa-box-archive"></i> Archive</button>
-                <button type="button" class="lightbox-btn-export" id="lightboxExportBtn" onclick="exportEvent(currentLightboxFilename, currentLightboxArchived)"><i class="fa-solid fa-file-export"></i> Export</button>
-                <button type="button" class="lightbox-btn-delete" id="lightboxDeleteBtn" onclick="deleteEvent(currentLightboxFilename, currentLightboxArchived)"><i class="fa-solid fa-trash-can"></i> Delete</button>
-            </div>
         </div>
     </div>
 
@@ -2387,6 +2391,7 @@
                 ? 'Permanently delete this video? This cannot be undone.'
                 : 'Delete this video? This cannot be undone.');
             if (!ok) return;
+            const wasCurrentInLightbox = (currentLightboxFilename === fn);
             const url = (isArchived ? '/delete_archived/' : '/delete/') + fn;
             _postForm(url, {}).then(res => {
                 if (res.ok) {
@@ -2394,7 +2399,17 @@
                     if (card) card.remove();
                     _decrementCountBadge(isArchived ? 'archive-count' : 'event-count');
                     showToast('Deleted.');
-                    if (currentLightboxFilename === fn) closeLightbox();
+                    if (wasCurrentInLightbox) {
+                        // Das nächste Video in der Liste übernimmt die Stelle
+                        // des gelöschten -- nach dem Entfernen ist das genau
+                        // der Eintrag, der jetzt am selben Index steht.
+                        const order = isArchived ? currentArchivedOrder : currentRecentOrder;
+                        const idx = order.indexOf(fn);
+                        if (idx !== -1) order.splice(idx, 1);
+                        const nextFilename = order[idx] || order[idx - 1];
+                        if (nextFilename) openLightbox(nextFilename, isArchived);
+                        else closeLightbox();
+                    }
                 } else {
                     showToast('⚠️ Delete failed: ' + (res.error || 'unknown error'), 6000);
                 }
@@ -2568,6 +2583,14 @@
         // Nachschlage-Map filename -> Event-Objekt, damit die Lightbox (die nur
         // den Dateinamen kennt) trotzdem an die AI-Beschreibung kommt.
         const eventDataMap = {};
+
+        // Geordnete Dateinamen-Listen (dieselbe Reihenfolge wie zuletzt gerendert)
+        // -- für Pfeiltasten-/Klick-Navigation in der Lightbox. Getrennt für
+        // "recent" und "archived", da beide unabhängig voneinander sind und
+        // man beim Navigieren nicht versehentlich von einer Liste in die
+        // andere rutschen soll.
+        let currentRecentOrder = [];
+        let currentArchivedOrder = [];
 
         // Welche Beschreibungen der Nutzer aufgeklappt hat — muss über den 3s-
         // Poll hinweg erhalten bleiben, sonst klappt renderEvents() (das bei
@@ -2837,6 +2860,8 @@
         }
 
         function renderEvents(events, archived) {
+            if (archived) currentArchivedOrder = (events || []).map(ev => ev.filename);
+            else currentRecentOrder = (events || []).map(ev => ev.filename);
             if (!events || events.length === 0) {
                 const icon = archived ? 'fa-box-open' : 'fa-film';
                 const msg = archived ? 'No archived recordings yet.' : 'No events recorded yet.';
@@ -3254,6 +3279,34 @@
         let currentLightboxFilename = null;
         let currentLightboxArchived = false;
 
+        function _currentNavOrder() {
+            return currentLightboxArchived ? currentArchivedOrder : currentRecentOrder;
+        }
+
+        function updateLightboxNavButtons() {
+            const order = _currentNavOrder();
+            const idx = order.indexOf(currentLightboxFilename);
+            document.getElementById('lightboxPrevBtn').disabled = (idx <= 0);
+            document.getElementById('lightboxNextBtn').disabled = (idx === -1 || idx >= order.length - 1);
+        }
+
+        function navigateLightbox(direction) {
+            const order = _currentNavOrder();
+            const idx = order.indexOf(currentLightboxFilename);
+            if (idx === -1) return;
+            const newIdx = idx + direction;
+            if (newIdx < 0 || newIdx >= order.length) return;
+            openLightbox(order[newIdx], currentLightboxArchived);
+        }
+
+        function jumpToStart() {
+            videoPlayer.currentTime = 0;
+        }
+
+        function jumpToEnd() {
+            if (isFinite(videoPlayer.duration)) videoPlayer.currentTime = videoPlayer.duration;
+        }
+
         function openLightbox(filename, archived) {
             loader.style.display = 'block';
             statusText.innerText = 'Loading & transcoding video...';
@@ -3279,11 +3332,11 @@
             }
             renderLightboxMetadata(ev);
 
-            document.getElementById('lightboxArchiveBtn').style.display = (archived || (ev && ev.is_recording)) ? 'none' : 'inline-flex';
-            document.getElementById('lightboxDeleteBtn').innerHTML = archived
+            document.getElementById('lightboxArchiveBtnTop').style.display = (archived || (ev && ev.is_recording)) ? 'none' : 'inline-flex';
+            document.getElementById('lightboxDeleteBtnTop').innerHTML = archived
                 ? '<i class="fa-solid fa-trash-can"></i> Delete permanently'
                 : '<i class="fa-solid fa-trash-can"></i> Delete';
-            document.getElementById('lightboxExportBtn').style.display = (EXPORT_ENABLED && !(ev && ev.is_recording)) ? 'inline-flex' : 'none';
+            document.getElementById('lightboxExportBtnTop').style.display = (EXPORT_ENABLED && !(ev && ev.is_recording)) ? 'inline-flex' : 'none';
 
             videoPlayer.onloadeddata = () => {
                 loader.style.display = 'none';
@@ -3296,6 +3349,7 @@
             };
 
             setSpeed(1.0, document.getElementById('defaultSpeedBtn'));
+            updateLightboxNavButtons();
             lightbox.classList.add('active');
         }
 
@@ -3349,8 +3403,14 @@
                 if (liveLightbox.classList.contains('active')) closeLiveView();
             }
             if (lightbox.classList.contains('active')) {
-                if (e.key === "ArrowLeft") skipTime(-10);
-                if (e.key === "ArrowRight") skipTime(10);
+                if (e.key === "ArrowLeft") {
+                    if (e.shiftKey) skipTime(-10);
+                    else navigateLightbox(-1);
+                }
+                if (e.key === "ArrowRight") {
+                    if (e.shiftKey) skipTime(10);
+                    else navigateLightbox(1);
+                }
                 if (e.key === " ") { e.preventDefault(); videoPlayer.paused ? videoPlayer.play() : videoPlayer.pause(); }
             }
         });

@@ -1529,6 +1529,35 @@ input:checked + .slider:before { transform: translateX(21px); background: var(--
     margin-top: 12px;
 }
 .lightbox-meta:empty { display: none; margin-top: 0; }
+
+.lightbox-video-wrap {
+    position: relative;
+}
+.lightbox-nav-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 5;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+.lightbox-nav-arrow:hover { opacity: 1; background: rgba(0, 0, 0, 0.75); }
+.lightbox-nav-arrow:disabled { opacity: 0.15; cursor: default; }
+.lightbox-nav-arrow:disabled:hover { background: rgba(0, 0, 0, 0.5); }
+.lightbox-nav-prev { left: 10px; }
+.lightbox-nav-next { right: 10px; }
+
 .lightbox-actions {
     display: flex;
     gap: 10px;
@@ -1611,6 +1640,18 @@ input:checked + .slider:before { transform: translateX(21px); background: var(--
     border-color: var(--primary);
     color: var(--text-on-primary);
 }
+.compact-controls {
+    gap: 8px;
+}
+.compact-controls button,
+.compact-controls .btn-download {
+    padding: 7px 12px;
+    min-height: 34px;
+    font-size: 0.8rem;
+}
+.compact-controls .lightbox-btn-archive:hover { border-color: var(--primary); color: var(--primary); }
+.compact-controls .lightbox-btn-export:hover { border-color: var(--success); color: var(--success); }
+.compact-controls .lightbox-btn-delete:hover { border-color: var(--danger); color: var(--danger); }
 .btn-download {
     background: var(--card-bg-inset);
     border: 1px solid var(--border);
