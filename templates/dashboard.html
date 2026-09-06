@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#14131b">
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
-    <title>vigil Dashboard</title>
+    <title>vaelen Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.15/hls.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,7 +16,7 @@
 <body>
     <div id="dynamic-bg"></div>
     <div class="container">
-        <h1><img src="{{ url_for('static', filename='vigil-icon.svg') }}" alt="" class="vigil-logo-icon"> vigil Dashboard</h1>
+        <h1><img src="{{ url_for('static', filename='vaelen-icon.svg') }}" alt="" class="vaelen-logo-icon"> vaelen Dashboard</h1>
 
         <!-- Schmale Pipeline-Control-Leiste: dezente Buttons, keine "Helden" -->
         <div class="pipeline-bar">
@@ -36,25 +36,25 @@
         <div id="settingsLightbox" class="lightbox" onclick="closeSettingsPanel(event)">
             <div class="lightbox-content settings-panel-content" onclick="event.stopPropagation()">
                 <span class="close-btn" onclick="closeSettingsPanel(event)"><i class="fa-solid fa-xmark"></i></span>
-                <iframe id="settingsIframe" src="about:blank" title="vigil Settings"></iframe>
+                <iframe id="settingsIframe" src="about:blank" title="vaelen Settings"></iframe>
             </div>
         </div>
 
-        <!-- "Frag vigil": eigene, prominente Fläche statt in den normalen
+        <!-- "Frag vaelen": eigene, prominente Fläche statt in den normalen
              Stichwort-Suchfeldern versteckt -- soll sich bewusst anders
              anfühlen als der Rest des Dashboards. -->
-        <div class="ask-vigil-container">
-            <div class="ask-vigil-box" id="askVigilBox">
-                <i class="fa-solid fa-sparkles ask-vigil-icon"></i>
-                <input type="text" id="askVigilInput" class="ask-vigil-input"
-                       placeholder="Ask vigil anything…"
-                       onkeydown="if (event.key === 'Enter') askVigil();">
-                <button type="button" class="ask-vigil-submit" onclick="askVigil()" title="Ask" id="askVigilSubmitBtn">
+        <div class="ask-vaelen-container">
+            <div class="ask-vaelen-box" id="askVaelenBox">
+                <i class="fa-solid fa-sparkles ask-vaelen-icon"></i>
+                <input type="text" id="askVaelenInput" class="ask-vaelen-input"
+                       placeholder="Ask vaelen anything…"
+                       onkeydown="if (event.key === 'Enter') askVaelen();">
+                <button type="button" class="ask-vaelen-submit" onclick="askVaelen()" title="Ask" id="askVaelenSubmitBtn">
                     <i class="fa-solid fa-arrow-right"></i>
                 </button>
             </div>
-            <div class="ask-vigil-hint">e.g. “Was anyone at the door yesterday afternoon who wasn't a delivery?”</div>
-            <div id="askVigilAnswer" class="ask-vigil-answer" style="display:none;"></div>
+            <div class="ask-vaelen-hint">e.g. “Was anyone at the door yesterday afternoon who wasn't a delivery?”</div>
+            <div id="askVaelenAnswer" class="ask-vaelen-answer" style="display:none;"></div>
         </div>
 
         <!-- CCTV-Hauptbereich: Streams + letzte Aufnahmen, das eigentlich Wichtige -->
@@ -174,10 +174,10 @@
                         after midnight, and a weekly one every Monday, both waiting in this card next time
                         you open the dashboard:
                     </p>
-                    <pre class="log-view" style="white-space:pre-wrap;">5 0 * * *  cd /path/to/vigil && ./.venv/bin/python daily_summary.py --period day
-10 0 * * 1 cd /path/to/vigil && ./.venv/bin/python daily_summary.py --period week</pre>
+                    <pre class="log-view" style="white-space:pre-wrap;">5 0 * * *  cd /path/to/vaelen && ./.venv/bin/python daily_summary.py --period day
+10 0 * * 1 cd /path/to/vaelen && ./.venv/bin/python daily_summary.py --period week</pre>
                     <p class="settings-hint" style="margin-top:8px;">
-                        Replace <code>/path/to/vigil</code> with your actual install path. Uses the
+                        Replace <code>/path/to/vaelen</code> with your actual install path. Uses the
                         same virtual environment and Ollama settings as the rest of the pipeline — nothing
                         extra to configure.
                     </p>
@@ -197,7 +197,7 @@
                 <details style="margin-top:16px;">
                     <summary style="cursor:pointer; color:var(--text-muted); font-size:0.9rem;"><i class="fa-solid fa-clock"></i> Automate with a cronjob</summary>
                     <p class="settings-hint" style="margin-top:8px; margin-bottom:8px;">Weekly retrain, picking up whatever's new since last time:</p>
-                    <pre class="log-view" style="white-space:pre-wrap;">15 0 * * 1 cd /path/to/vigil && ./.venv/bin/python anomaly_detection.py --lookback-days 30</pre>
+                    <pre class="log-view" style="white-space:pre-wrap;">15 0 * * 1 cd /path/to/vaelen && ./.venv/bin/python anomaly_detection.py --lookback-days 30</pre>
                 </details>
             </div>
         </details>
@@ -417,13 +417,13 @@
         window.addEventListener('message', function(event) {
             const msg = event.data;
             if (!msg || typeof msg !== 'object') return;
-            if (msg.type === 'vigil:theme') {
+            if (msg.type === 'vaelen:theme') {
                 applyTheme(msg.theme);
-            } else if (msg.type === 'vigil:thumbnailFps' && msg.fps) {
+            } else if (msg.type === 'vaelen:thumbnailFps' && msg.fps) {
                 updateThumbnailPollRate(1000 / msg.fps);
-            } else if (msg.type === 'vigil:streamsUpdated') {
+            } else if (msg.type === 'vaelen:streamsUpdated') {
                 renderStreamsGrid(msg.streams || []);
-            } else if (msg.type === 'vigil:settingsSaved') {
+            } else if (msg.type === 'vaelen:settingsSaved') {
                 updateSystemStatus();
             }
         });
@@ -1589,12 +1589,12 @@
         // einen Seiten-Neuladen übersteht. Dies ist die echte, von Flask
         // ausgelieferte Dashboard-Seite (kein Claude-Artefakt-Sandkasten),
         // localStorage funktioniert hier ganz normal.
-        let autoplayEnabled = (localStorage.getItem('vigil_autoplay') ?? 'true') === 'true';
-        let lastPlaybackSpeed = parseFloat(localStorage.getItem('vigil_playback_speed') || '1.0');
+        let autoplayEnabled = (localStorage.getItem('vaelen_autoplay') ?? 'true') === 'true';
+        let lastPlaybackSpeed = parseFloat(localStorage.getItem('vaelen_playback_speed') || '1.0');
 
         function toggleAutoplay() {
             autoplayEnabled = !autoplayEnabled;
-            localStorage.setItem('vigil_autoplay', String(autoplayEnabled));
+            localStorage.setItem('vaelen_autoplay', String(autoplayEnabled));
             _updateAutoplayBtn();
         }
 
@@ -2113,7 +2113,7 @@
                             if (el) el.style.display = isRec ? 'flex' : 'none';
                             if (isRec) anyRecording = true;
                         });
-                        document.title = anyRecording ? '🔴 REC · vigil' : DEFAULT_TITLE;
+                        document.title = anyRecording ? '🔴 REC · vaelen' : DEFAULT_TITLE;
                     }
                     if (data.thumbnail_interval_ms) {
                         updateThumbnailPollRate(data.thumbnail_interval_ms);
@@ -2126,45 +2126,45 @@
         }
         setInterval(updateSystemStatus, 3000);
 
-        function askVigil() {
-            const input = document.getElementById('askVigilInput');
+        function askVaelen() {
+            const input = document.getElementById('askVaelenInput');
             const query = input.value.trim();
             if (!query) return;
 
-            const box = document.getElementById('askVigilBox');
-            const answerEl = document.getElementById('askVigilAnswer');
-            const submitBtn = document.getElementById('askVigilSubmitBtn');
-            box.classList.add('ask-vigil-loading');
+            const box = document.getElementById('askVaelenBox');
+            const answerEl = document.getElementById('askVaelenAnswer');
+            const submitBtn = document.getElementById('askVaelenSubmitBtn');
+            box.classList.add('ask-vaelen-loading');
             submitBtn.disabled = true;
             answerEl.style.display = 'block';
-            answerEl.innerHTML = '<div class="ask-vigil-thinking"><i class="fa-solid fa-sparkles fa-fade"></i> Thinking through what vigil has seen…</div>';
+            answerEl.innerHTML = '<div class="ask-vaelen-thinking"><i class="fa-solid fa-sparkles fa-fade"></i> Thinking through what vaelen has seen…</div>';
 
             const formData = new FormData();
             formData.append('query', query);
             fetch('/api/ask', { method: 'POST', body: formData })
                 .then(r => r.json())
                 .then(data => {
-                    box.classList.remove('ask-vigil-loading');
+                    box.classList.remove('ask-vaelen-loading');
                     submitBtn.disabled = false;
                     if (!data.ok) {
-                        answerEl.innerHTML = `<div class="ask-vigil-error"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(data.error || 'Something went wrong.')}</div>`;
+                        answerEl.innerHTML = `<div class="ask-vaelen-error"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(data.error || 'Something went wrong.')}</div>`;
                         return;
                     }
                     const sourcesHtml = (data.sources || []).map(s => `
-                        <div class="ask-vigil-source" onclick="openLightbox('${s.filename}', ${s.archived})">
-                            <div class="ask-vigil-source-meta"><strong>${escapeHtml(s.camera)}</strong> · ${escapeHtml(s.datetime)}</div>
-                            <div class="ask-vigil-source-desc">${escapeHtml(s.description)}</div>
+                        <div class="ask-vaelen-source" onclick="openLightbox('${s.filename}', ${s.archived})">
+                            <div class="ask-vaelen-source-meta"><strong>${escapeHtml(s.camera)}</strong> · ${escapeHtml(s.datetime)}</div>
+                            <div class="ask-vaelen-source-desc">${escapeHtml(s.description)}</div>
                         </div>
                     `).join('');
                     answerEl.innerHTML = `
-                        <div class="ask-vigil-response">${escapeHtml(data.answer)}</div>
-                        ${sourcesHtml ? `<div class="ask-vigil-sources-label">Based on ${data.sources.length} recording${data.sources.length === 1 ? '' : 's'}:</div><div class="ask-vigil-sources">${sourcesHtml}</div>` : ''}
+                        <div class="ask-vaelen-response">${escapeHtml(data.answer)}</div>
+                        ${sourcesHtml ? `<div class="ask-vaelen-sources-label">Based on ${data.sources.length} recording${data.sources.length === 1 ? '' : 's'}:</div><div class="ask-vaelen-sources">${sourcesHtml}</div>` : ''}
                     `;
                 })
                 .catch(() => {
-                    box.classList.remove('ask-vigil-loading');
+                    box.classList.remove('ask-vaelen-loading');
                     submitBtn.disabled = false;
-                    answerEl.innerHTML = '<div class="ask-vigil-error"><i class="fa-solid fa-triangle-exclamation"></i> Could not reach vigil.</div>';
+                    answerEl.innerHTML = '<div class="ask-vaelen-error"><i class="fa-solid fa-triangle-exclamation"></i> Could not reach vaelen.</div>';
                 });
         }
 
@@ -2431,7 +2431,7 @@
         function setSpeed(rate, btn) {
             videoPlayer.playbackRate = rate;
             lastPlaybackSpeed = rate;
-            localStorage.setItem('vigil_playback_speed', String(rate));
+            localStorage.setItem('vaelen_playback_speed', String(rate));
             speedBtns.forEach(b => b.classList.remove('active'));
             if (btn) btn.classList.add('active');
         }

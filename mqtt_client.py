@@ -68,7 +68,7 @@ def _publish_raw_worker(topic, payload, retain, qos, broker, port, username, pas
         _mqtt_publish.single(
             topic, payload=payload, retain=retain, qos=qos,
             hostname=broker, port=port, auth=auth,
-            client_id="vigil", keepalive=5
+            client_id="vaelen", keepalive=5
         )
     except Exception as e:
         print(f"⚠️ [MQTT] Publish an '{topic}' fehlgeschlagen (Broker erreichbar? Zugangsdaten korrekt?): {e}")
@@ -101,7 +101,7 @@ def publish(topic_suffix, payload, retain=False, qos=0):
     port = int(settings.get("MQTT_PORT", 1883) or 1883)
     username = settings.get("MQTT_USERNAME") or None
     password = settings.get("MQTT_PASSWORD") or None
-    prefix = (settings.get("MQTT_TOPIC_PREFIX") or "vigil").strip("/") or "vigil"
+    prefix = (settings.get("MQTT_TOPIC_PREFIX") or "vaelen").strip("/") or "vaelen"
     full_topic = f"{prefix}/{topic_suffix}"
     if not isinstance(payload, str):
         payload = json.dumps(payload)
@@ -126,27 +126,27 @@ def publish_ha_discovery(camera_name):
     port = int(settings.get("MQTT_PORT", 1883) or 1883)
     username = settings.get("MQTT_USERNAME") or None
     password = settings.get("MQTT_PASSWORD") or None
-    prefix = (settings.get("MQTT_TOPIC_PREFIX") or "vigil").strip("/") or "vigil"
+    prefix = (settings.get("MQTT_TOPIC_PREFIX") or "vaelen").strip("/") or "vaelen"
     safe_name = _safe_id(camera_name)
 
     device = {
-        "identifiers": [f"vigil_{safe_name}"],
-        "name": f"vigil {camera_name}",
-        "manufacturer": "vigil",
+        "identifiers": [f"vaelen_{safe_name}"],
+        "name": f"vaelen {camera_name}",
+        "manufacturer": "vaelen",
     }
     entities = [
-        ("binary_sensor", f"vigil_{safe_name}_recording", {
+        ("binary_sensor", f"vaelen_{safe_name}_recording", {
             "name": f"{camera_name} Recording",
-            "unique_id": f"vigil_{safe_name}_recording",
+            "unique_id": f"vaelen_{safe_name}_recording",
             "state_topic": f"{prefix}/{safe_name}/recording",
             "payload_on": "ON",
             "payload_off": "OFF",
             "device_class": "motion",
             "device": device,
         }),
-        ("sensor", f"vigil_{safe_name}_last_event", {
+        ("sensor", f"vaelen_{safe_name}_last_event", {
             "name": f"{camera_name} Last Event",
-            "unique_id": f"vigil_{safe_name}_last_event",
+            "unique_id": f"vaelen_{safe_name}_last_event",
             "state_topic": f"{prefix}/{safe_name}/last_event_summary",
             "device": device,
         }),

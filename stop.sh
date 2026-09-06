@@ -1,5 +1,5 @@
 #!/bin/bash
-# stop.sh - Stoppt die vigil-Pipeline sauber.
+# stop.sh - Stoppt die vaelen-Pipeline sauber.
 #
 # recorder_pipeline.py fängt SIGTERM jetzt selbst ab (siehe dortige
 # Fixes) und schließt laufende Aufnahmen sauber (Flush + close), bevor der
@@ -26,7 +26,7 @@ PATTERN="recorder_pipeline.py"
 PID_FILE="./pipeline.pid"
 GRACE_SECONDS=15
 
-echo "Stopping vigil Pipeline..."
+echo "Stopping vaelen Pipeline..."
 
 # Gezielt über die gemerkte Master-PID: erst deren direkte Kindprozesse
 # (die eigentlichen Kamera-Worker), dann den Master selbst.

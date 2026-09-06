@@ -160,7 +160,7 @@ def create_mam_key():
     label = request.form.get('label', '').strip()
     raw_key = mam_api.generate_api_key(label)
     # Der Klartext-Key wird HIER EINMALIG zurückgegeben -- danach ist er aus
-    # vigil selbst nicht mehr abrufbar (nur der Hash wird gespeichert).
+    # vaelen selbst nicht mehr abrufbar (nur der Hash wird gespeichert).
     return json.dumps({'ok': True, 'key': raw_key})
 
 @app.route('/api/mam_keys/<key_hash>/revoke', methods=['POST'])
@@ -467,7 +467,7 @@ def _call_ollama_text(prompt, settings, timeout=90):
 @app.route('/api/ask', methods=['POST'])
 @requires_auth
 def api_ask():
-    """'Frag vigil' -- echte Unterhaltung statt Stichwortsuche. Nutzt exakt
+    """'Frag vaelen' -- echte Unterhaltung statt Stichwortsuche. Nutzt exakt
     dieselbe semantische Such-Engine wie die normale Suche (search_index.py),
     holt die relevantesten Aufnahmen, und lässt Ollama daraus eine
     zusammenhängende Antwort formulieren -- mit Verweis auf die konkreten
@@ -593,7 +593,7 @@ def api_export_metadata():
 
     if fmt == 'json':
         resp = Response(json.dumps(events, indent=2, ensure_ascii=False), mimetype='application/json')
-        resp.headers['Content-Disposition'] = 'attachment; filename=vigil_export.json'
+        resp.headers['Content-Disposition'] = 'attachment; filename=vaelen_export.json'
         return resp
 
     output = io.StringIO()
@@ -611,7 +611,7 @@ def api_export_metadata():
         row['people'] = ', '.join(p.get('name', '') for p in (e.get('people_in_video') or []))
         writer.writerow(row)
     resp = Response(output.getvalue(), mimetype='text/csv')
-    resp.headers['Content-Disposition'] = 'attachment; filename=vigil_export.csv'
+    resp.headers['Content-Disposition'] = 'attachment; filename=vaelen_export.csv'
     return resp
 
 def _get_disk_status():
@@ -1554,7 +1554,7 @@ def api_storage_status():
             entry['total_bytes'] = total
             entry['free_bytes'] = free
             entry['used_percent'] = round((used / total) * 100, 1) if total else None
-            test_file = os.path.join(path, '.vigil_write_test')
+            test_file = os.path.join(path, '.vaelen_write_test')
             try:
                 with open(test_file, 'w') as tf:
                     tf.write('ok')
@@ -1650,7 +1650,7 @@ def _stop_proc(proc, timeout=5):
 
 def _start_live_ffmpeg(url, m3u8_path, log_path, use_nvenc):
     """Startet den ffmpeg-Prozess fürs Live-HLS. NVENC (Hardware) passt zur
-    restlichen Maschine (vigils eigene Aufnahme nutzt schon NVENC, Axels
+    restlichen Maschine (vaelens eigene Aufnahme nutzt schon NVENC, Axels
     exec_push-Skript nutzt Intel QuickSync) — Software-Encoding (libx264)
     ist der garantiert funktionierende Fallback für Maschinen ohne
     NVIDIA-GPU."""
@@ -1961,7 +1961,7 @@ def save_pipeline_settings():
         "MQTT_PORT": _clamp(mqtt_port, 1, 65535),
         "MQTT_USERNAME": request.form.get('MQTT_USERNAME', '').strip(),
         "MQTT_PASSWORD": request.form.get('MQTT_PASSWORD', ''),
-        "MQTT_TOPIC_PREFIX": (request.form.get('MQTT_TOPIC_PREFIX', 'vigil').strip() or 'vigil'),
+        "MQTT_TOPIC_PREFIX": (request.form.get('MQTT_TOPIC_PREFIX', 'vaelen').strip() or 'vaelen'),
         "MQTT_HA_DISCOVERY": request.form.get('MQTT_HA_DISCOVERY') == 'on',
         "AGENT_WEBHOOK_URL": request.form.get('AGENT_WEBHOOK_URL', '').strip(),
         "AGENT_WEBHOOK_ANOMALY_ONLY": request.form.get('AGENT_WEBHOOK_ANOMALY_ONLY') == 'on',

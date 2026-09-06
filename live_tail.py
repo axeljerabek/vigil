@@ -9,9 +9,9 @@ Two related use cases share this exact mechanism:
      local file dropped by some external recording tool.
   2. The platform-stream bridge (platform_bridge.py) — yt-dlp/ffmpeg
      continuously downloading a 24/7 YouTube/Twitch/etc. stream. Rather
-     than vigil re-resolving and reconnecting to the platform URL itself
+     than vaelen re-resolving and reconnecting to the platform URL itself
      on every hiccup, yt-dlp's own robust retry/live-download handling
-     writes into a local file, and vigil just tails that -- the same
+     writes into a local file, and vaelen just tails that -- the same
      "keep reading, never hit EOF" problem either way.
 """
 import os

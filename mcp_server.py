@@ -1,8 +1,8 @@
 """
-mcp_server.py — MCP server wrapper around vigil's Agent Control API.
+mcp_server.py — MCP server wrapper around vaelen's Agent Control API.
 
 Lets any MCP-compatible client (Claude, Hermes/OpenClaw if it speaks MCP,
-etc.) operate vigil through proper MCP tools instead of raw HTTP calls.
+etc.) operate vaelen through proper MCP tools instead of raw HTTP calls.
 This is a thin wrapper -- every tool here just calls the same
 /api/v1/agent/* endpoints documented in AGENT_CONFIG.md, with the same
 permission gate (agent_control_enabled + per-capability toggles) enforced
@@ -10,8 +10,8 @@ server-side exactly as before. Running this server does NOT bypass any of
 that -- it's a different way to call the same, already-gated API.
 
 Configuration via environment variables:
-  VIGIL_BASE_URL  -- e.g. http://localhost:19473/api/v1 (default shown)
-  VIGIL_API_KEY   -- generate one from the dashboard's External API card
+  VAELEN_BASE_URL  -- e.g. http://localhost:19473/api/v1 (default shown)
+  VAELEN_API_KEY   -- generate one from the dashboard's External API card
 
 Run with: python3 mcp_server.py
 (stdio transport by default -- the standard way most MCP clients,
@@ -21,36 +21,36 @@ import os
 import requests
 from mcp.server.mcpserver import MCPServer
 
-VIGIL_BASE_URL = os.environ.get("VIGIL_BASE_URL", "http://localhost:19473/api/v1").rstrip("/")
-VIGIL_API_KEY = os.environ.get("VIGIL_API_KEY", "")
+VAELEN_BASE_URL = os.environ.get("VAELEN_BASE_URL", "http://localhost:19473/api/v1").rstrip("/")
+VAELEN_API_KEY = os.environ.get("VAELEN_API_KEY", "")
 TIMEOUT = 20
 
-mcp = MCPServer("vigil")
+mcp = MCPServer("vaelen")
 
 
 def _headers():
-    return {"Authorization": f"Bearer {VIGIL_API_KEY}"}
+    return {"Authorization": f"Bearer {VAELEN_API_KEY}"}
 
 
 def _get(path, params=None):
     try:
-        r = requests.get(f"{VIGIL_BASE_URL}{path}", headers=_headers(), params=params, timeout=TIMEOUT)
+        r = requests.get(f"{VAELEN_BASE_URL}{path}", headers=_headers(), params=params, timeout=TIMEOUT)
         return r.json()
     except requests.RequestException as e:
-        return {"error": f"Could not reach vigil at {VIGIL_BASE_URL}: {e}"}
+        return {"error": f"Could not reach vaelen at {VAELEN_BASE_URL}: {e}"}
 
 
 def _post(path, data=None):
     try:
-        r = requests.post(f"{VIGIL_BASE_URL}{path}", headers=_headers(), data=data, timeout=TIMEOUT)
+        r = requests.post(f"{VAELEN_BASE_URL}{path}", headers=_headers(), data=data, timeout=TIMEOUT)
         return r.json()
     except requests.RequestException as e:
-        return {"error": f"Could not reach vigil at {VIGIL_BASE_URL}: {e}"}
+        return {"error": f"Could not reach vaelen at {VAELEN_BASE_URL}: {e}"}
 
 
 @mcp.tool()
 def get_capabilities() -> dict:
-    """Check what this agent is currently allowed to do on vigil -- call this
+    """Check what this agent is currently allowed to do on vaelen -- call this
     first if unsure. Works even if agent control is fully disabled."""
     return _get("/agent/capabilities")
 
@@ -211,8 +211,8 @@ def train_anomaly_baselines(lookback_days: int = 30) -> dict:
 
 
 if __name__ == "__main__":
-    if not VIGIL_API_KEY:
-        print("⚠️  VIGIL_API_KEY is not set -- every tool call will fail with 401. "
+    if not VAELEN_API_KEY:
+        print("⚠️  VAELEN_API_KEY is not set -- every tool call will fail with 401. "
               "Generate a key from the dashboard's External API card and set the "
-              "VIGIL_API_KEY environment variable before running this server.")
+              "VAELEN_API_KEY environment variable before running this server.")
     mcp.run(transport="stdio")

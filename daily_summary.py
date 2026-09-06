@@ -185,7 +185,7 @@ def run(period="day", reference_date=None):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate a daily or weekly summary of vigil events.")
+    parser = argparse.ArgumentParser(description="Generate a daily or weekly summary of vaelen events.")
     parser.add_argument("--period", choices=["day", "week"], default="day")
     parser.add_argument("--date", help="Reference date (YYYY-MM-DD), defaults to today", default=None)
     args = parser.parse_args()

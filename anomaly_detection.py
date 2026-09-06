@@ -182,7 +182,7 @@ def check_anomaly_for_event(filename):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Train anomaly-detection baselines for vigil cameras.")
+    parser = argparse.ArgumentParser(description="Train anomaly-detection baselines for vaelen cameras.")
     parser.add_argument("--camera", help="Train only this camera (default: all cameras with data)")
     parser.add_argument("--lookback-days", type=int, default=30)
     args = parser.parse_args()

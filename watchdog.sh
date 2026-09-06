@@ -13,7 +13,7 @@ LOG_FILE="./logs/watchdog.log"
 PYTHON_EXE="./.venv/bin/python"
 mkdir -p ./logs
 
-# Anpassen falls web_ui.py anders gestartet wird (z.B. "systemctl restart vigil-web"):
+# Anpassen falls web_ui.py anders gestartet wird (z.B. "systemctl restart vaelen-web"):
 RESTART_CMD="nohup \"$PYTHON_EXE\" web_ui.py >> ./logs/web_ui_runtime.log 2>&1 &"
 
 ts() { date '+%Y-%m-%d %H:%M:%S'; }

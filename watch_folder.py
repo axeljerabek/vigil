@@ -227,14 +227,14 @@ def _mark_processed(path):
     und sie wird korrekt erneut verarbeitet."""
     try:
         stat = os.stat(path)
-        with open(path + ".vigilimported", "w") as f:
+        with open(path + ".vaelenimported", "w") as f:
             json.dump({"size": stat.st_size, "mtime": stat.st_mtime}, f)
     except Exception:
         pass
 
 
 def _already_processed(path):
-    marker_path = path + ".vigilimported"
+    marker_path = path + ".vaelenimported"
     if not os.path.exists(marker_path):
         return False
     try:
@@ -589,11 +589,11 @@ class WatchFolderAgent(multiprocessing.Process):
                     if path not in current_files:
                         seen.pop(path, None)
 
-                # Verwaiste .vigilimported-Marker aufräumen (Original inzwischen
+                # Verwaiste .vaelenimported-Marker aufräumen (Original inzwischen
                 # gelöscht) -- rein kosmetisch, sonst sammeln sich mit der Zeit
                 # nutzlose kleine Dateien im Watchfolder an.
-                for marker_path in glob.glob(os.path.join(folder, "*.vigilimported")):
-                    if not os.path.exists(marker_path[:-len(".vigilimported")]):
+                for marker_path in glob.glob(os.path.join(folder, "*.vaelenimported")):
+                    if not os.path.exists(marker_path[:-len(".vaelenimported")]):
                         try:
                             os.remove(marker_path)
                         except OSError:

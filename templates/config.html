@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#14131b">
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
-    <title>vigil Settings</title>
+    <title>vaelen Settings</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -390,7 +390,7 @@
                         <div class="settings-section-label"><i class="fa-solid fa-hard-drive"></i> Storage</div>
                         <p class="settings-hint" style="margin-top: -4px; margin-bottom: 12px;">
                             Where recordings actually live. By default, everything is stored inside the
-                            project folder itself — on the same drive as the system, if that's where vigil
+                            project folder itself — on the same drive as the system, if that's where vaelen
                             is installed. Point this at a separate, larger drive if you expect to record a
                             lot. <strong>Changing this does not move existing recordings</strong> — only new
                             ones, from the next pipeline restart onward, go to the new location. See the
@@ -398,7 +398,7 @@
                         </p>
                         <div class="settings-group">
                             <label>Recordings folder (leave empty for default: project folder)</label>
-                            <input type="text" name="ALERTS_DIR_OVERRIDE" value="{{ settings.get('ALERTS_DIR_OVERRIDE', '') }}" placeholder="/mnt/big-drive/vigil-recordings">
+                            <input type="text" name="ALERTS_DIR_OVERRIDE" value="{{ settings.get('ALERTS_DIR_OVERRIDE', '') }}" placeholder="/mnt/big-drive/vaelen-recordings">
                         </div>
                     </div>
 
@@ -408,14 +408,14 @@
                             Copies the video, thumbnail, and all sidecar metadata for an event into its
                             own folder, named e.g. <code>Event_Garden_20260830_081734 Topic_Accident</code>.
                             Leave empty to hide the Export button. Two destination types:
-                            <strong>local path</strong> (e.g. <code>/mnt/backup/vigil-exports</code>) copies
+                            <strong>local path</strong> (e.g. <code>/mnt/backup/vaelen-exports</code>) copies
                             directly; <strong>remote path</strong> (e.g. <code>user@host:/path</code>) uses
                             <code>rsync</code> — this requires passwordless SSH key access to already be set
                             up between this machine and the remote one; nothing here can configure that for you.
                         </p>
                         <div class="settings-group">
                             <label>Export folder</label>
-                            <input type="text" name="EXPORT_DIR" value="{{ settings.get('EXPORT_DIR', '') }}" placeholder="/mnt/backup/vigil-exports or user@host:/path">
+                            <input type="text" name="EXPORT_DIR" value="{{ settings.get('EXPORT_DIR', '') }}" placeholder="/mnt/backup/vaelen-exports or user@host:/path">
                         </div>
                         <div class="settings-group">
                             <label>What to include</label>
@@ -440,7 +440,7 @@
                         <div class="settings-group">
                             <label style="display:flex; align-items:center; gap:8px; cursor:pointer; color:var(--danger);">
                                 <input type="checkbox" name="EXPORT_DELETE_AFTER" {% if settings.get('EXPORT_DELETE_AFTER', False) %}checked{% endif %} style="width:auto;">
-                                Delete the original from vigil after a successful export
+                                Delete the original from vaelen after a successful export
                             </label>
                             <p class="settings-hint" style="margin-top:4px;">Only deletes once the export is confirmed successful — never if the export fails partway through. Off by default; this is permanent, there's no undo.</p>
                         </div>
@@ -464,7 +464,7 @@
                         </div>
                         <div class="settings-group" style="margin-bottom: 14px;">
                             <label>Import folder</label>
-                            <input type="text" name="WATCH_FOLDER_PATH" value="{{ settings.get('WATCH_FOLDER_PATH', '') }}" placeholder="/mnt/imports/vigil-dropbox">
+                            <input type="text" name="WATCH_FOLDER_PATH" value="{{ settings.get('WATCH_FOLDER_PATH', '') }}" placeholder="/mnt/imports/vaelen-dropbox">
                         </div>
                         <div class="settings-grid">
                             <div class="settings-group">
@@ -541,7 +541,7 @@
                         </div>
                         <div class="settings-group" style="margin-bottom: 14px;">
                             <label>Topic prefix</label>
-                            <input type="text" name="MQTT_TOPIC_PREFIX" value="{{ settings.get('MQTT_TOPIC_PREFIX', 'vigil') }}" placeholder="vigil">
+                            <input type="text" name="MQTT_TOPIC_PREFIX" value="{{ settings.get('MQTT_TOPIC_PREFIX', 'vaelen') }}" placeholder="vaelen">
                             <p class="settings-hint" style="margin-top:4px;">Events publish under <code>&lt;prefix&gt;/&lt;camera&gt;/recording</code> and <code>&lt;prefix&gt;/&lt;camera&gt;/last_event_summary</code> — useful for your own automations even without Home Assistant.</p>
                         </div>
                         <div class="settings-group">
@@ -561,7 +561,7 @@
                         </p>
                         <div class="settings-group" style="margin-bottom: 14px;">
                             <label>Webhook URL</label>
-                            <input type="text" name="AGENT_WEBHOOK_URL" value="{{ settings.get('AGENT_WEBHOOK_URL', '') }}" placeholder="http://localhost:8787/vigil-event">
+                            <input type="text" name="AGENT_WEBHOOK_URL" value="{{ settings.get('AGENT_WEBHOOK_URL', '') }}" placeholder="http://localhost:8787/vaelen-event">
                         </div>
                         <div class="settings-group">
                             <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
@@ -854,7 +854,7 @@
                 <i class="fa-solid fa-chevron-down chevron"></i>
             </summary>
             <div class="collapse-body">
-                <p class="settings-hint" style="margin-top: -4px;">Lets an external system (a media asset manager, another app, your own script) submit video for vigil to process — through the same pipeline as a live recording (codec handling, filmstrip, AI description, faces), with per-job topics instead of the global setting. See <code>REMOTE_API.md</code> for the full endpoint reference and example requests.</p>
+                <p class="settings-hint" style="margin-top: -4px;">Lets an external system (a media asset manager, another app, your own script) submit video for vaelen to process — through the same pipeline as a live recording (codec handling, filmstrip, AI description, faces), with per-job topics instead of the global setting. See <code>REMOTE_API.md</code> for the full endpoint reference and example requests.</p>
                 <div style="display:flex; gap:10px; align-items:flex-end; margin-bottom:14px; flex-wrap:wrap;">
                     <div class="settings-group" style="margin-bottom:0; flex:1; min-width:200px;">
                         <label>New key label</label>
@@ -1195,7 +1195,7 @@
             // läuft in einem iframe) -- eigenes DOM, eigenes documentElement.
             // Ohne diese Nachricht würde nur das iframe selbst das Theme
             // wechseln, die Seite dahinter bliebe im alten Theme stehen.
-            window.parent.postMessage({ type: 'vigil:theme', theme: theme }, '*');
+            window.parent.postMessage({ type: 'vaelen:theme', theme: theme }, '*');
         }
 
         function handleSettingsSubmit(event) {
@@ -1229,9 +1229,9 @@
                         // erst beim nächsten Neuladen.
                         const newRate = formData.get('THUMBNAIL_FPS');
                         if (newRate) {
-                            window.parent.postMessage({ type: 'vigil:thumbnailFps', fps: parseFloat(newRate) }, '*');
+                            window.parent.postMessage({ type: 'vaelen:thumbnailFps', fps: parseFloat(newRate) }, '*');
                         }
-                        window.parent.postMessage({ type: 'vigil:settingsSaved' }, '*');
+                        window.parent.postMessage({ type: 'vaelen:settingsSaved' }, '*');
                     } else {
                         showToast('⚠️ Failed to save settings.', 6000);
                     }
@@ -1352,7 +1352,7 @@
                         // der Hauptseite -- die läuft hier im iframe nicht
                         // mit, daher per postMessage an die Elternseite
                         // weiterreichen statt lokal aufzurufen.
-                        window.parent.postMessage({ type: 'vigil:streamsUpdated', streams: res.streams || [] }, '*');
+                        window.parent.postMessage({ type: 'vaelen:streamsUpdated', streams: res.streams || [] }, '*');
                     } else {
                         showToast('⚠️ ' + (res.error || 'Failed to save cameras.'), 6000);
                     }

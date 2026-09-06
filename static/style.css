@@ -68,8 +68,8 @@
    Regel statt jede der vielen Kartenklassen einzeln umzuschreiben, da fast
    alle ohnehin schon dieselben --card-bg/--border-Variablen nutzen. */
 .collapse-card, .lightbox-content, .settings-section, .status-metric-box,
-.storage-folder-row, .event-item, .ask-vigil-box, .ask-vigil-answer,
-.ask-vigil-source, .watchfolder-live-badge, .stream-tile, .people-grid .person-card,
+.storage-folder-row, .event-item, .ask-vaelen-box, .ask-vaelen-answer,
+.ask-vaelen-source, .watchfolder-live-badge, .stream-tile, .people-grid .person-card,
 .cluster-card, .pipeline-bar {
     backdrop-filter: var(--blur-card);
     -webkit-backdrop-filter: var(--blur-card);
@@ -146,7 +146,7 @@ h1 {
     flex-wrap: wrap;
     gap: 12px;
 }
-.vigil-logo-icon {
+.vaelen-logo-icon {
     height: 1.4em;
     width: auto;
     border-radius: 6px;
@@ -676,12 +676,12 @@ input:checked + .slider:before { transform: translateX(21px); background: var(--
     border-bottom: 1px solid var(--border);
 }
 
-.ask-vigil-container {
+.ask-vaelen-container {
     max-width: 720px;
     margin: 0 auto 28px auto;
     padding: 0 12px;
 }
-.ask-vigil-box {
+.ask-vaelen-box {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -692,23 +692,23 @@ input:checked + .slider:before { transform: translateX(21px); background: var(--
     box-shadow: 0 2px 14px rgba(0, 0, 0, 0.12);
     transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
-.ask-vigil-box:focus-within {
+.ask-vaelen-box:focus-within {
     border-color: var(--primary);
     box-shadow: 0 4px 22px rgba(232, 163, 61, 0.22);
 }
-.ask-vigil-box.ask-vigil-loading { opacity: 0.75; }
-.ask-vigil-hint {
+.ask-vaelen-box.ask-vaelen-loading { opacity: 0.75; }
+.ask-vaelen-hint {
     text-align: center;
     font-size: 0.78rem;
     color: var(--text-dim);
     margin-top: 8px;
 }
-.ask-vigil-icon {
+.ask-vaelen-icon {
     color: var(--primary);
     font-size: 1.1rem;
     flex-shrink: 0;
 }
-.ask-vigil-input {
+.ask-vaelen-input {
     flex: 1;
     border: none;
     background: transparent;
@@ -718,8 +718,8 @@ input:checked + .slider:before { transform: translateX(21px); background: var(--
     color: var(--text);
     min-width: 0;
 }
-.ask-vigil-input::placeholder { color: var(--text-muted); }
-.ask-vigil-submit {
+.ask-vaelen-input::placeholder { color: var(--text-muted); }
+.ask-vaelen-submit {
     background: var(--primary-soft);
     color: var(--primary);
     border: 1px solid var(--primary-soft);
@@ -733,41 +733,41 @@ input:checked + .slider:before { transform: translateX(21px); background: var(--
     justify-content: center;
     transition: background var(--trans), color var(--trans);
 }
-.ask-vigil-submit:hover { background: var(--primary); color: var(--text-on-primary); }
-.ask-vigil-submit:disabled { opacity: 0.5; cursor: default; }
+.ask-vaelen-submit:hover { background: var(--primary); color: var(--text-on-primary); }
+.ask-vaelen-submit:disabled { opacity: 0.5; cursor: default; }
 
-.ask-vigil-answer {
+.ask-vaelen-answer {
     margin-top: 16px;
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: 20px 22px;
 }
-.ask-vigil-thinking {
+.ask-vaelen-thinking {
     color: var(--text-muted);
     font-size: 0.95rem;
 }
-.ask-vigil-thinking i { color: var(--primary); margin-right: 6px; }
-.ask-vigil-response {
+.ask-vaelen-thinking i { color: var(--primary); margin-right: 6px; }
+.ask-vaelen-response {
     font-size: 1.02rem;
     line-height: 1.55;
     color: var(--text);
 }
-.ask-vigil-error { color: var(--danger); font-size: 0.95rem; }
-.ask-vigil-sources-label {
+.ask-vaelen-error { color: var(--danger); font-size: 0.95rem; }
+.ask-vaelen-sources-label {
     margin-top: 16px;
     font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--text-muted);
 }
-.ask-vigil-sources {
+.ask-vaelen-sources {
     margin-top: 8px;
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
-.ask-vigil-source {
+.ask-vaelen-source {
     background: var(--card-bg-inset);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -775,9 +775,9 @@ input:checked + .slider:before { transform: translateX(21px); background: var(--
     cursor: pointer;
     transition: border-color 0.15s ease;
 }
-.ask-vigil-source:hover { border-color: var(--primary); }
-.ask-vigil-source-meta { font-size: 0.85rem; color: var(--text); }
-.ask-vigil-source-desc { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; }
+.ask-vaelen-source:hover { border-color: var(--primary); }
+.ask-vaelen-source-meta { font-size: 0.85rem; color: var(--text); }
+.ask-vaelen-source-desc { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; }
 .settings-panel-content {
     width: 96vw;
     height: 92vh;

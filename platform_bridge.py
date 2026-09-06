@@ -2,14 +2,14 @@
 platform_bridge.py — runs a persistent background process that downloads
 a platform live stream (YouTube/Twitch/Vimeo/etc.) via yt-dlp and pipes it
 into a named pipe (FIFO) in an always-streamable format (MPEG-TS), which
-vigil's camera-ingestion can then open exactly like a live RTSP feed --
+vaelen's camera-ingestion can then open exactly like a live RTSP feed --
 same mechanism as watchfolder mode 1 (see live_tail.py), just fed by a
 controlled writer instead of an external tool.
 
-This deliberately decouples vigil's own camera-connection lifecycle from
+This deliberately decouples vaelen's own camera-connection lifecycle from
 platform-specific reconnect/URL-expiry quirks entirely: yt-dlp resolves
 and reconnects to the platform on its own, robustly, restarting the whole
-download pipeline on failure; vigil just reads a local FIFO that's always
+download pipeline on failure; vaelen just reads a local FIFO that's always
 either flowing or briefly blocked, never "expired" the way a raw resolved
 URL can be after some minutes.
 """
@@ -23,7 +23,7 @@ class PlatformStreamBridge:
     """One instance per platform camera. Owns a FIFO and keeps a
     yt-dlp | ffmpeg pipeline feeding it alive, restarting the pipeline on
     failure (channel went offline, network hiccup, either process crashed)
-    rather than propagating that failure up to vigil's own camera-connect
+    rather than propagating that failure up to vaelen's own camera-connect
     retry loop."""
 
     def __init__(self, url, fifo_path, restart_delay=10):

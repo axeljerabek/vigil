@@ -84,7 +84,7 @@ if os.path.exists(SETTINGS_F):
                 else:
                     try:
                         os.makedirs(alerts_override, exist_ok=True)
-                        test_file = os.path.join(alerts_override, ".vigil_write_test")
+                        test_file = os.path.join(alerts_override, ".vaelen_write_test")
                         with open(test_file, 'w') as tf:
                             tf.write("ok")
                         os.remove(test_file)
@@ -265,7 +265,7 @@ os.makedirs(ALERTS_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
 
 def get_stream_logger(stream_name):
-    logger = logging.getLogger(f"vigil.{stream_name}")
+    logger = logging.getLogger(f"vaelen.{stream_name}")
     if not logger.handlers:
         logger.setLevel(logging.INFO)
         log_file = os.path.join(LOG_DIR, f"{stream_name}.log")
@@ -277,7 +277,7 @@ def get_stream_logger(stream_name):
     return logger
 
 # System Logger Setup
-system_logger = logging.getLogger("vigil.SYSTEM")
+system_logger = logging.getLogger("vaelen.SYSTEM")
 system_logger.setLevel(logging.INFO)
 if not system_logger.handlers:
     s_log_file = os.path.join(LOG_DIR, "system_main.log")

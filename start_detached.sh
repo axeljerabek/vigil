@@ -1,5 +1,5 @@
 #!/bin/bash
-# start_detached.sh - Startet die vigil-Pipeline losgelöst vom aufrufenden Prozess.
+# start_detached.sh - Startet die vaelen-Pipeline losgelöst vom aufrufenden Prozess.
 
 # Robust gegen abweichendes Arbeitsverzeichnis (z.B. falls das Skript mal
 # nicht mit cwd=PROJECT_ROOT aufgerufen wird): immer relativ zum eigenen
@@ -31,7 +31,7 @@ if pgrep -f "recorder_pipeline.py" > /dev/null; then
     exit 0
 fi
 
-echo "🚀 [$(date)] Launching vigil Pipeline..." | tee -a "$LOG_FILE"
+echo "🚀 [$(date)] Launching vaelen Pipeline..." | tee -a "$LOG_FILE"
 
 if [ -f "./.venv/bin/python" ]; then
     VENV_SITES=$(find .venv -name "site-packages" -type d | head -n 1)

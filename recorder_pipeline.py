@@ -343,7 +343,7 @@ class CameraAgent(multiprocessing.Process):
         # av.open() -- ein persistenter Hintergrund-Prozess (PlatformStreamBridge)
         # kümmert sich robust um yt-dlp-Auflösung/Reconnect und schreibt in eine
         # lokale FIFO; self.url wird für diesen Fall auf die FIFO umgebogen.
-        # Das entkoppelt vigils eigene Verbindungs-Retry-Schleife komplett von
+        # Das entkoppelt vaelens eigene Verbindungs-Retry-Schleife komplett von
         # plattformspezifischen Eigenheiten (ablaufende signierte URLs,
         # Offline-Kanäle) -- dieselbe FIFO-Technik wie bei Watchfolder-Modus 1.
         self._original_platform_url = self.url if platform_source is not None and platform_source.needs_resolution(self.url) else None
@@ -1717,7 +1717,7 @@ if __name__ == "__main__":
     enabled_names = [s['name'] for s in STREAMS if s.get('enabled', False)]
     disabled_names = [s['name'] for s in STREAMS if not s.get('enabled', False)]
     system_logger.info("=" * 70)
-    system_logger.info("🚀 [MASTER] vigil Pipeline Startup")
+    system_logger.info("🚀 [MASTER] vaelen Pipeline Startup")
     system_logger.info(f"   KI-Modell     : YOLO {YOLO_VERSION} | Pfad: {MODEL_PATH}")
     system_logger.info(f"   Detection     : Klassen={DETECTION_CLASSES} | Confidence={CONFIDENCE_THRESHOLD}")
     system_logger.info(f"   Aufnahme      : Ziel-FPS={TARGET_FPS} | Pre-Roll={PRE_ROLL_SEC}s | Post-Roll={POST_ROLL_SEC}s")

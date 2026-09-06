@@ -1,7 +1,7 @@
 """
 platform_source.py — resolves platform URLs (YouTube, Twitch, Vimeo, and
 hundreds of others yt-dlp supports) into a direct, ffmpeg/PyAV-consumable
-stream URL, so vigil's existing camera-ingestion pipeline can treat them
+stream URL, so vaelen's existing camera-ingestion pipeline can treat them
 exactly like an RTSP/RTMP camera without any platform-specific code.
 
 Resolved URLs are typically time-limited/signed -- they expire after some
@@ -21,7 +21,7 @@ _PLATFORM_HOSTS = (
 def needs_resolution(url):
     """Whether this URL is a platform link that needs yt-dlp resolution,
     as opposed to a plain rtsp://, rtmp://, http(s) direct-stream, or
-    /dev/videoX URL vigil already handles natively."""
+    /dev/videoX URL vaelen already handles natively."""
     return any(host in url for host in _PLATFORM_HOSTS)
 
 
