@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.15/hls.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@200;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -47,12 +47,13 @@
             <div class="ask-vigil-box" id="askVigilBox">
                 <i class="fa-solid fa-sparkles ask-vigil-icon"></i>
                 <input type="text" id="askVigilInput" class="ask-vigil-input"
-                       placeholder="Ask vigil anything… “Was anyone at the door yesterday afternoon who wasn't a delivery?”"
+                       placeholder="Ask vigil anything…"
                        onkeydown="if (event.key === 'Enter') askVigil();">
                 <button type="button" class="ask-vigil-submit" onclick="askVigil()" title="Ask" id="askVigilSubmitBtn">
                     <i class="fa-solid fa-arrow-right"></i>
                 </button>
             </div>
+            <div class="ask-vigil-hint">e.g. “Was anyone at the door yesterday afternoon who wasn't a delivery?”</div>
             <div id="askVigilAnswer" class="ask-vigil-answer" style="display:none;"></div>
         </div>
 

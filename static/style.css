@@ -2,8 +2,9 @@
 /* Plus Jakarta Sans für die "Nebula"-Optik -- IBM Plex Mono bleibt für
    wirklich technische/tabellarische Stellen (Log, Zahlen), damit diese
    Bereiche weiterhin wie ein Kontrollpanel wirken statt wie generischer
-   Fließtext. */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;400;600;700;800&display=swap');
+   Fließtext. Wird zuverlässig per <link> im <head> beider Seiten geladen
+   (nicht per @import hier -- das kann von Netzwerk-/CSP-Einstellungen
+   blockiert werden und lädt ohnehin langsamer/später als ein <link>). */
 
 :root {
     /* Nebula Dark: fast schwarz, mit sanftem Glow im Hintergrund statt
@@ -669,6 +670,12 @@ input:checked + .slider:before { transform: translateX(21px); background: var(--
     box-shadow: 0 4px 22px rgba(232, 163, 61, 0.22);
 }
 .ask-vigil-box.ask-vigil-loading { opacity: 0.75; }
+.ask-vigil-hint {
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    margin-top: 8px;
+}
 .ask-vigil-icon {
     color: var(--primary);
     font-size: 1.1rem;
@@ -686,9 +693,9 @@ input:checked + .slider:before { transform: translateX(21px); background: var(--
 }
 .ask-vigil-input::placeholder { color: var(--text-muted); }
 .ask-vigil-submit {
-    background: var(--primary);
-    color: var(--text-on-primary);
-    border: none;
+    background: var(--primary-soft);
+    color: var(--primary);
+    border: 1px solid var(--primary-soft);
     border-radius: 50%;
     width: 34px;
     height: 34px;
@@ -697,9 +704,9 @@ input:checked + .slider:before { transform: translateX(21px); background: var(--
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: opacity 0.15s ease;
+    transition: background var(--trans), color var(--trans);
 }
-.ask-vigil-submit:hover { opacity: 0.85; }
+.ask-vigil-submit:hover { background: var(--primary); color: var(--text-on-primary); }
 .ask-vigil-submit:disabled { opacity: 0.5; cursor: default; }
 
 .ask-vigil-answer {
