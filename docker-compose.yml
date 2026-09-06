@@ -1,4 +1,4 @@
-# vigil - docker-compose.yml
+# vaelen - docker-compose.yml
 #
 # EIN Service, nicht zwei. Das war ursprünglich als zwei getrennte Container
 # aufgeteilt (Pipeline + Dashboard) — das ist falsch und wurde korrigiert:
@@ -24,10 +24,10 @@
 # einfach OLLAMA_URL in den Dashboard-Settings drauf zeigen lassen.
 
 services:
-  vigil:
+  vaelen:
     build: .
-    image: vigil:latest
-    container_name: vigil
+    image: vaelen:latest
+    container_name: vaelen
     command: ["python3", "web_ui.py"]
     restart: unless-stopped
     network_mode: host   # lokale RTMP-Kameras im Heimnetz + Dashboard unter http://<host>:19473

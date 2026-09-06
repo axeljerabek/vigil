@@ -1,6 +1,6 @@
-# Running vigil with Docker
+# Running vaelen with Docker
 
-This is the fastest way to get vigil running, especially if you don't want to manage a Python venv, CUDA wheels, and system packages by hand. One container, built from the project's image, running the dashboard — which starts/stops the recording pipeline itself, exactly like on a bare-metal install.
+This is the fastest way to get vaelen running, especially if you don't want to manage a Python venv, CUDA wheels, and system packages by hand. One container, built from the project's image, running the dashboard — which starts/stops the recording pipeline itself, exactly like on a bare-metal install.
 
 **Honest caveat up front:** this setup hasn't been verified against real GPU hardware by me (the assistant that wrote it) — I don't have a GPU or a Docker daemon available while writing this. The YAML structure and logic below have been checked carefully, but please treat the very first run as a real test, not a done deal, and report back anything that doesn't match reality. (This is also why the container split below got fixed after an actual real-world test caught it — worth keeping in mind for anything else here too.)
 
@@ -24,8 +24,8 @@ The reason: `web_ui.py` starts and stops `recorder_pipeline.py` by running `star
 
 1. **Clone the repo:**
    ```bash
-   git clone https://github.com/axeljerabek/vigil
-   cd vigil
+   git clone https://github.com/axeljerabek/vaelen
+   cd vaelen
    ```
 
 2. **Create your config:**
@@ -48,7 +48,7 @@ The reason: `web_ui.py` starts and stops `recorder_pipeline.py` by running `star
    ```
    First start downloads the base CUDA image, installs everything, and then downloads the YOLO model from inside the container — this can take a while depending on your connection. Watch progress with:
    ```bash
-   docker compose logs -f vigil
+   docker compose logs -f vaelen
    ```
 
 5. **Open the dashboard:** `http://<host-ip>:19473`, add your cameras under Settings → Cameras, then use the Start button in the pipeline control bar — same as the bare-metal install, since this is now genuinely the same single-process-tree design, just containerized.
@@ -61,7 +61,7 @@ The reason: `web_ui.py` starts and stops `recorder_pipeline.py` by running `star
   1. `insightface`/`faster-whisper` pull in plain `onnxruntime` as a dependency, which can overwrite `onnxruntime-gpu`'s files in the same Python module namespace with no error at all. See INSTALL.md's Face Recognition section for the fix.
   2. `onnxruntime-gpu` needs cuDNN as a **system library** (`libcudnn.so.9`) — unlike PyTorch, which bundles its own cuDNN inside the pip wheel itself. The base CUDA image doesn't include this, so it's installed explicitly in the Dockerfile (`cudnn9-cuda-12`) — this exact step is **unverified against real hardware**; if the build fails on it or pulls a surprising sub-version, please report back.
 
-  Check which one (if either) is happening: `docker compose exec vigil python3 -c "import onnxruntime; print(onnxruntime.get_available_providers())"` — if `CUDAExecutionProvider` is missing, check the container's build log for the cuDNN install step, and separately try the fix from INSTALL.md for the namespace-collision case.
+  Check which one (if either) is happening: `docker compose exec vaelen python3 -c "import onnxruntime; print(onnxruntime.get_available_providers())"` — if `CUDAExecutionProvider` is missing, check the container's build log for the cuDNN install step, and separately try the fix from INSTALL.md for the namespace-collision case.
 * **Model/embedding caches** (CLAP, sentence-transformers, Whisper, InsightFace) are kept in named Docker volumes (`model-cache`, `ultralytics-cache`), not bind-mounted — so they survive container restarts and rebuilds without you needing to manage the exact cache folder structure on the host.
 * **File ownership:** the container runs as root by default (common for GPU workloads, since `/dev/nvidia*` access typically needs it), so files written into `alerts/` and `logs/` on the host will be root-owned. If that's a problem for you, you'll need to add your own `PUID`/`PGID` handling — not included here, to keep the initial setup simple.
 * **Updating:** `git pull`, then `docker compose up -d --build` again. Your `alerts/`, `logs/`, settings files, and model caches are untouched — everything that matters is either bind-mounted or in a named volume, never baked into the image layer.
