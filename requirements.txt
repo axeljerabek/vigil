@@ -19,3 +19,4 @@ paho-mqtt
 yt-dlp
 requests
 mcp[cli]
+easyocr
