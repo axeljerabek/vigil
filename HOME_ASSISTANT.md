@@ -1,6 +1,6 @@
 # Home Assistant / MQTT Integration
 
-vigil can publish camera events to an MQTT broker, with optional Home Assistant auto-discovery — no YAML required to get the entities into HA.
+vaelen can publish camera events to an MQTT broker, with optional Home Assistant auto-discovery — no YAML required to get the entities into HA.
 
 ## What you get
 
@@ -9,12 +9,12 @@ Per enabled camera, two entities:
 * **`<Camera> Recording`** — a `binary_sensor` (device class `motion`) that turns `ON` while a recording is in progress (covers both the active detection phase and the post-roll buffer) and `OFF` once it finishes.
 * **`<Camera> Last Event`** — a `sensor` holding the AI-generated description of the most recent recording, updated once post-processing finishes.
 
-Both are grouped under one Home Assistant device per camera (`vigil <Camera>`), so they show up together under Settings → Devices & Services → MQTT → Devices.
+Both are grouped under one Home Assistant device per camera (`vaelen <Camera>`), so they show up together under Settings → Devices & Services → MQTT → Devices.
 
 ## Prerequisites
 
 1. A running MQTT broker (Mosquitto is the common self-hosted choice; Home Assistant's own **Mosquitto broker add-on** works fine too if you run HA OS/Supervised).
-2. The `paho-mqtt` Python package installed in vigil's virtual environment:
+2. The `paho-mqtt` Python package installed in vaelen's virtual environment:
    ```bash
    source .venv/bin/activate
    pip install paho-mqtt
@@ -22,7 +22,7 @@ Both are grouped under one Home Assistant device per camera (`vigil <Camera>`), 
    (Already listed in `requirements.txt` — a normal `pip install -r requirements.txt` picks it up.)
 3. Home Assistant's **MQTT integration** configured and pointed at the same broker (Settings → Devices & Services → Add Integration → MQTT).
 
-## Enabling it in vigil
+## Enabling it in vaelen
 
 In the dashboard: **Settings → Home Assistant / MQTT**
 
@@ -32,7 +32,7 @@ In the dashboard: **Settings → Home Assistant / MQTT**
 | Broker host | IP or hostname of your MQTT broker |
 | Broker port | Default `1883` (unencrypted) — use whatever port your broker actually listens on |
 | Username / Password | Optional, only if your broker requires auth |
-| Topic prefix | Default `vigil` — change this if you're already using that namespace for something else, or if you run multiple vigil instances and want to tell them apart |
+| Topic prefix | Default `vaelen` — change this if you're already using that namespace for something else, or if you run multiple vaelen instances and want to tell them apart |
 | Publish Home Assistant MQTT Discovery config | On by default — turn off if you only want the raw topics for your own automations and don't want HA auto-creating entities |
 
 No pipeline restart is needed — MQTT settings are read fresh (with a short cache) on every publish.
@@ -51,7 +51,7 @@ Camera names are sanitized for the topic path (spaces and special characters bec
 
 ## Reliability note
 
-MQTT publishing is deliberately **fire-and-forget**: the actual network call runs in a short-lived background thread, never on the recording pipeline's own thread. If your broker is down, slow, or unreachable, recordings and detection continue completely unaffected — you'll just see a warning in the log (`⚠️ [MQTT] Publish an '...' fehlgeschlagen`) instead of any impact on the pipeline itself.
+MQTT publishing is deliberately **fire-and-forget**: the actual network call runs in a short-lived background thread, never on the recording pipeline's own thread. If your broker is down, slow, or unreachable, recordings and detection continue completely unaffected — you'll just see a warning in the log (`⚠ [MQTT] Publish an '...' fehlgeschlagen`) instead of any impact on the pipeline itself.
 
 ## Example automations
 
@@ -60,10 +60,10 @@ A couple of starting points once the entities exist in Home Assistant:
 **Notify on any recording:**
 ```yaml
 automation:
-  - alias: "vigil - notify on recording"
+  - alias: "vaelen - notify on recording"
     trigger:
       - platform: state
-        entity_id: binary_sensor.vigil_entrance_recording
+        entity_id: binary_sensor.vaelen_entrance_recording
         to: "on"
     action:
       - service: notify.mobile_app_your_phone
@@ -75,10 +75,10 @@ automation:
 **Notify with the AI description once analysis finishes:**
 ```yaml
 automation:
-  - alias: "vigil - notify with description"
+  - alias: "vaelen - notify with description"
     trigger:
       - platform: state
-        entity_id: sensor.vigil_entrance_last_event
+        entity_id: sensor.vaelen_entrance_last_event
     action:
       - service: notify.mobile_app_your_phone
         data:

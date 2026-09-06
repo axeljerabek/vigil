@@ -1,6 +1,6 @@
 # MCP Server
 
-Exposes vigil's [Agent Control API](./AGENT_CONFIG.md) as proper MCP tools, for any MCP-compatible client (Claude Desktop, Hermes/OpenClaw if it speaks MCP, etc.) instead of raw HTTP calls.
+Exposes vaelen's [Agent Control API](./AGENT_CONFIG.md) as proper MCP tools, for any MCP-compatible client (Claude Desktop, Hermes/OpenClaw if it speaks MCP, etc.) instead of raw HTTP calls.
 
 **This is a thin wrapper, not a new permission surface.** Every tool here calls the exact same `/api/v1/agent/*` endpoints documented in AGENT_CONFIG.md, with the exact same gate (`agent_control_enabled` + per-capability toggles) enforced server-side. Running this server doesn't bypass any of that — it's just a different transport for calling the same, already-gated API.
 
@@ -13,8 +13,8 @@ pip install "mcp[cli]" requests
 1. Generate an API key from the dashboard's External API card.
 2. Set two environment variables before running:
    ```bash
-   export VIGIL_BASE_URL="http://localhost:19473/api/v1"
-   export VIGIL_API_KEY="idg_xxxxxxxxxxxx"
+   export VAELEN_BASE_URL="http://localhost:19473/api/v1"
+   export VAELEN_API_KEY="idg_xxxxxxxxxxxx"
    ```
 3. Run it:
    ```bash
@@ -26,12 +26,12 @@ For Claude Desktop, add to its MCP server config:
 ```json
 {
   "mcpServers": {
-    "vigil": {
+    "vaelen": {
       "command": "python3",
-      "args": ["/path/to/vigil/mcp_server.py"],
+      "args": ["/path/to/vaelen/mcp_server.py"],
       "env": {
-        "VIGIL_BASE_URL": "http://localhost:19473/api/v1",
-        "VIGIL_API_KEY": "idg_xxxxxxxxxxxx"
+        "VAELEN_BASE_URL": "http://localhost:19473/api/v1",
+        "VAELEN_API_KEY": "idg_xxxxxxxxxxxx"
       }
     }
   }
@@ -48,4 +48,4 @@ Each tool's docstring (visible to the calling model) explains what it does and, 
 
 ## If a tool call fails
 
-A failure here means the same thing it would over raw HTTP: check `get_capabilities` first to confirm the relevant permission is actually enabled, and confirm `VIGIL_BASE_URL`/`VIGIL_API_KEY` are correct and the vigil dashboard process is running the current code (a route that 404s almost always means the server process needs restarting, not that this wrapper has the wrong path).
+A failure here means the same thing it would over raw HTTP: check `get_capabilities` first to confirm the relevant permission is actually enabled, and confirm `VAELEN_BASE_URL`/`VAELEN_API_KEY` are correct and the vaelen dashboard process is running the current code (a route that 404s almost always means the server process needs restarting, not that this wrapper has the wrong path).

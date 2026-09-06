@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>vigil — System Architecture</title>
+<title>vaelen — System Architecture</title>
 <style>
   :root {
     --bg: #10131a;
@@ -146,7 +146,7 @@
 <body>
 <div class="layout">
   <nav class="toc">
-    <div class="brand">VIGIL</div>
+    <div class="brand">VAELEN</div>
     <a href="#overview">1. Overview</a>
     <a href="#ingest">2. Camera process</a>
     <a href="#recording">3. Recording (packet copy)</a>
@@ -158,7 +158,7 @@
   </nav>
   <main>
     <header class="hero">
-      <h1>vigil — System Architecture</h1>
+      <h1>vaelen — System Architecture</h1>
       <p>Complete data flow from the RTMP camera to the searchable, AI-analyzed recording in the dashboard. Eight sections, each with its own detail diagram.</p>
     </header>
 
@@ -168,7 +168,7 @@
       <p class="lede">The complete journey of an event: from the camera through detection and recording to AI analysis and display in the dashboard.</p>
       <div class="panel">
         <svg width="100%" viewBox="0 0 1280 420" role="img">
-          <title>Overview of the vigil pipeline</title>
+          <title>Overview of the vaelen pipeline</title>
           <desc>RTMP cameras feed into CameraAgent processes that use YOLO detection and audio triggers to write recordings via packet copy. Finished recordings run through an AI post-processing pipeline (vision model, Whisper, face recognition) and end up searchable in the web dashboard.</desc>
           <defs>
             <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">

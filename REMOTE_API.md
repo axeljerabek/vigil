@@ -1,6 +1,6 @@
 # External API (Remote Control)
 
-vigil can accept video from an external system — a media asset manager, home automation, another app, a script — process it through the same pipeline as a live recording (codec handling, filmstrip generation, AI description, face recognition), and hand the enriched result back, either via webhook callback or by polling a status endpoint.
+vaelen can accept video from an external system — a media asset manager, home automation, another app, a script — process it through the same pipeline as a live recording (codec handling, filmstrip generation, AI description, face recognition), and hand the enriched result back, either via webhook callback or by polling a status endpoint.
 
 ## Getting an API key
 
@@ -26,7 +26,7 @@ Multipart form data:
 
 | Field | Required | Notes |
 | :--- | :--- | :--- |
-| `file` | Yes | The video file. Same codec handling as everything else in vigil — HEVC and other browser-incompatible codecs are transcoded automatically. |
+| `file` | Yes | The video file. Same codec handling as everything else in vaelen — HEVC and other browser-incompatible codecs are transcoded automatically. |
 | `topics` | No | Comma-separated list, e.g. `break-in, delivery, mail carrier`. Overrides the global topic settings **for this job only**. Omit to use the global settings. |
 | `detect_faces` | No | `true` (default) or `false`. |
 | `callback_url` | No | POSTed to when the job finishes (see below). Omit if you'd rather poll. |
@@ -89,7 +89,7 @@ GET /api/v1/jobs/<job_id>/video?start=12&end=18
 
 ## Webhook callback
 
-If you passed `callback_url`, vigil POSTs this to it once the job finishes (success or failure):
+If you passed `callback_url`, vaelen POSTs this to it once the job finishes (success or failure):
 ```json
 {
   "job_id": "a1b2c3...",
@@ -104,18 +104,18 @@ If your endpoint doesn't respond with a 2xx, delivery is retried with exponentia
 
 ```bash
 # Submit
-curl -X POST https://your-vigil-host:19473/api/v1/jobs \
+curl -X POST https://your-vaelen-host:19473/api/v1/jobs \
   -H "Authorization: Bearer idg_xxxxxxxxxxxx" \
   -F "file=@delivery_clip.mp4" \
   -F "topics=delivery,mail carrier" \
-  -F "callback_url=https://your-system.example/vigil-callback"
+  -F "callback_url=https://your-system.example/vaelen-callback"
 
 # Poll
-curl https://your-vigil-host:19473/api/v1/jobs/<job_id> \
+curl https://your-vaelen-host:19473/api/v1/jobs/<job_id> \
   -H "Authorization: Bearer idg_xxxxxxxxxxxx"
 
 # Get the result
-curl https://your-vigil-host:19473/api/v1/jobs/<job_id>/metadata \
+curl https://your-vaelen-host:19473/api/v1/jobs/<job_id>/metadata \
   -H "Authorization: Bearer idg_xxxxxxxxxxxx"
 ```
 

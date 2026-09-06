@@ -1,6 +1,6 @@
 # Agent Control
 
-Lets an AI agent (Hermes, OpenClaw, or anything else calling the same API) operate vigil directly — toggle cameras, tune settings, start/stop the pipeline, and search — instead of only submitting jobs. Built on top of the [External API](./REMOTE_API.md); uses the same API keys and the same `/api/v1/` base.
+Lets an AI agent (Hermes, OpenClaw, or anything else calling the same API) operate vaelen directly — toggle cameras, tune settings, start/stop the pipeline, and search — instead of only submitting jobs. Built on top of the [External API](./REMOTE_API.md); uses the same API keys and the same `/api/v1/` base.
 
 **Off by default.** Nothing in this section does anything until you explicitly turn it on in `agent_config.json`.
 
@@ -81,7 +81,7 @@ One call, tells an agent everything it needs before doing anything else: which c
 
 ## Proactive notifications (agent webhook)
 
-Instead of polling, an agent can be notified automatically after each analyzed recording. Configure `AGENT_WEBHOOK_URL` in Settings → Agent Webhook (or `pipeline_settings.json` directly) — vigil POSTs a JSON payload there once analysis finishes:
+Instead of polling, an agent can be notified automatically after each analyzed recording. Configure `AGENT_WEBHOOK_URL` in Settings → Agent Webhook (or `pipeline_settings.json` directly) — vaelen POSTs a JSON payload there once analysis finishes:
 
 ```json
 {
@@ -144,18 +144,18 @@ Deliberate. Both are meaningfully higher-stakes than the rest (delete is irrever
 
 ```bash
 # Start here -- see what's currently allowed
-curl https://your-vigil-host:19473/api/v1/agent/capabilities \
+curl https://your-vaelen-host:19473/api/v1/agent/capabilities \
   -H "Authorization: Bearer idg_xxxxxxxxxxxx"
 
 # Check what's currently allowed to run
-curl https://your-vigil-host:19473/api/v1/agent/pipeline/status \
+curl https://your-vaelen-host:19473/api/v1/agent/pipeline/status \
   -H "Authorization: Bearer idg_xxxxxxxxxxxx"
 
 # Disable a camera
-curl -X POST https://your-vigil-host:19473/api/v1/agent/cameras/Backyard/disable \
+curl -X POST https://your-vaelen-host:19473/api/v1/agent/cameras/Backyard/disable \
   -H "Authorization: Bearer idg_xxxxxxxxxxxx"
 
 # Search
-curl "https://your-vigil-host:19473/api/v1/agent/search?q=delivery" \
+curl "https://your-vaelen-host:19473/api/v1/agent/search?q=delivery" \
   -H "Authorization: Bearer idg_xxxxxxxxxxxx"
 ```
