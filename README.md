@@ -1,6 +1,6 @@
 # vaelen
 
-<img src="vaelen-logo.svg" alt="vaelen logo" width="1000">
+<img src="vaelen-logo.jpg" alt="vaelen logo" width="1000">
 
 **Most NVR software is fundamentally about video: capture it, store it, let you scroll through it faster. vaelen starts from a different premise — video is just the raw material. What actually matters is the information that several specialized AI models extract from it, working together, and increasingly, what you can *ask* about that information in plain language instead of scrubbing through a timeline yourself.**
 
