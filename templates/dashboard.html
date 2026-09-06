@@ -39,6 +39,22 @@
             </div>
         </div>
 
+        <!-- "Frag vigil": eigene, prominente Fläche statt in den normalen
+             Stichwort-Suchfeldern versteckt -- soll sich bewusst anders
+             anfühlen als der Rest des Dashboards. -->
+        <div class="ask-vigil-container">
+            <div class="ask-vigil-box" id="askVigilBox">
+                <i class="fa-solid fa-sparkles ask-vigil-icon"></i>
+                <input type="text" id="askVigilInput" class="ask-vigil-input"
+                       placeholder="Ask vigil anything… “Was anyone at the door yesterday afternoon who wasn't a delivery?”"
+                       onkeydown="if (event.key === 'Enter') askVigil();">
+                <button type="button" class="ask-vigil-submit" onclick="askVigil()" title="Ask" id="askVigilSubmitBtn">
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+            <div id="askVigilAnswer" class="ask-vigil-answer" style="display:none;"></div>
+        </div>
+
         <!-- CCTV-Hauptbereich: Streams + letzte Aufnahmen, das eigentlich Wichtige -->
         <details open class="collapse-card">
             <summary>
@@ -2108,6 +2124,48 @@
                 .catch(err => console.error('Status fetch failed:', err));
         }
         setInterval(updateSystemStatus, 3000);
+
+        function askVigil() {
+            const input = document.getElementById('askVigilInput');
+            const query = input.value.trim();
+            if (!query) return;
+
+            const box = document.getElementById('askVigilBox');
+            const answerEl = document.getElementById('askVigilAnswer');
+            const submitBtn = document.getElementById('askVigilSubmitBtn');
+            box.classList.add('ask-vigil-loading');
+            submitBtn.disabled = true;
+            answerEl.style.display = 'block';
+            answerEl.innerHTML = '<div class="ask-vigil-thinking"><i class="fa-solid fa-sparkles fa-fade"></i> Thinking through what vigil has seen…</div>';
+
+            const formData = new FormData();
+            formData.append('query', query);
+            fetch('/api/ask', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    box.classList.remove('ask-vigil-loading');
+                    submitBtn.disabled = false;
+                    if (!data.ok) {
+                        answerEl.innerHTML = `<div class="ask-vigil-error"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(data.error || 'Something went wrong.')}</div>`;
+                        return;
+                    }
+                    const sourcesHtml = (data.sources || []).map(s => `
+                        <div class="ask-vigil-source" onclick="openLightbox('${s.filename}', ${s.archived})">
+                            <div class="ask-vigil-source-meta"><strong>${escapeHtml(s.camera)}</strong> · ${escapeHtml(s.datetime)}</div>
+                            <div class="ask-vigil-source-desc">${escapeHtml(s.description)}</div>
+                        </div>
+                    `).join('');
+                    answerEl.innerHTML = `
+                        <div class="ask-vigil-response">${escapeHtml(data.answer)}</div>
+                        ${sourcesHtml ? `<div class="ask-vigil-sources-label">Based on ${data.sources.length} recording${data.sources.length === 1 ? '' : 's'}:</div><div class="ask-vigil-sources">${sourcesHtml}</div>` : ''}
+                    `;
+                })
+                .catch(() => {
+                    box.classList.remove('ask-vigil-loading');
+                    submitBtn.disabled = false;
+                    answerEl.innerHTML = '<div class="ask-vigil-error"><i class="fa-solid fa-triangle-exclamation"></i> Could not reach vigil.</div>';
+                });
+        }
 
         function loadWatchfolderLiveStatus() {
             const el = document.getElementById('watchfolderLiveBanner');

@@ -446,7 +446,104 @@ def _camera_name_from_filename(filename):
             return filename.split(marker)[0]
     return filename
 
-@app.route('/api/filter_events')
+def _call_ollama_text(prompt, settings, timeout=90):
+    """Reiner Text-Prompt an Ollama, genau nach dem Muster von
+    daily_summary.py's _call_ollama() -- bewusst dieselbe Konvention (nutzt
+    das dort schon konfigurierte OLLAMA_VISION_MODEL, obwohl 'Vision' im
+    Namen steht, funktioniert es für reine Text-Prompts genauso, da es
+    ohnehin ein normales LLM ist -- kein zweites Modell extra pullen)."""
+    ollama_url = (settings.get("OLLAMA_URL") or "http://localhost:11434").rstrip("/")
+    model = settings.get("OLLAMA_VISION_MODEL") or "llava:latest"
+    payload = json.dumps({"model": model, "prompt": prompt, "stream": False}).encode("utf-8")
+    req = urllib.request.Request(
+        f"{ollama_url}/api/generate", data=payload,
+        headers={"Content-Type": "application/json"}
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        result = json.loads(resp.read())
+    return (result.get("response") or "").strip()
+
+
+@app.route('/api/ask', methods=['POST'])
+@requires_auth
+def api_ask():
+    """'Frag vigil' -- echte Unterhaltung statt Stichwortsuche. Nutzt exakt
+    dieselbe semantische Such-Engine wie die normale Suche (search_index.py),
+    holt die relevantesten Aufnahmen, und lässt Ollama daraus eine
+    zusammenhängende Antwort formulieren -- mit Verweis auf die konkreten
+    Aufnahmen, damit die Antwort nachprüfbar bleibt, statt eine Blackbox zu
+    sein."""
+    if search_index is None:
+        return json.dumps({'ok': False, 'error': 'Search index not available.'})
+    query = request.form.get('query', '').strip()
+    if not query:
+        return json.dumps({'ok': False, 'error': 'Please enter a question.'})
+
+    try:
+        results = search_index.search(query, top_k=12)
+    except Exception as e:
+        return json.dumps({'ok': False, 'error': f'Search failed: {e}'})
+
+    if not results:
+        return json.dumps({
+            'ok': True,
+            'answer': "I couldn't find any recordings that look relevant to that. Try rephrasing, or it may just not have happened.",
+            'sources': []
+        })
+
+    settings = load_settings()
+    candidates = []
+    for filename, base_dir, description, score in results:
+        full_path = os.path.join(base_dir, filename)
+        if not os.path.exists(full_path):
+            continue  # inzwischen gelöscht -- Suchindex kann leicht hinterherhinken
+        try:
+            dt_str = datetime.fromtimestamp(os.path.getmtime(full_path)).strftime('%Y-%m-%d %H:%M')
+        except Exception:
+            dt_str = 'unknown time'
+        candidates.append({
+            'filename': filename,
+            'archived': os.path.abspath(base_dir) == os.path.abspath(ARCHIVE_DIR),
+            'camera': _camera_name_from_filename(filename),
+            'datetime': dt_str,
+            'description': description or '(no description available)',
+        })
+
+    if not candidates:
+        return json.dumps({
+            'ok': True,
+            'answer': "I found some matches in the search index, but the actual recordings seem to have been deleted since.",
+            'sources': []
+        })
+
+    listing = "\n".join(
+        f"{i+1}. [{c['datetime']}] Camera '{c['camera']}': {c['description']}"
+        for i, c in enumerate(candidates)
+    )
+    prompt = (
+        "You are answering a question about a home's security camera recordings. "
+        "Below is a numbered list of recordings that might be relevant, each with a timestamp, "
+        "camera name, and an AI-generated description of what happens in it.\n\n"
+        f"{listing}\n\n"
+        f"Question: {query}\n\n"
+        "Answer the question directly and concisely, in plain conversational language, based ONLY on "
+        "the recordings listed above. Mention specific times/cameras when relevant. If none of the "
+        "recordings actually answer the question, say so honestly instead of guessing. Do not invent "
+        "details that aren't in the descriptions above."
+    )
+
+    try:
+        answer = _call_ollama_text(prompt, settings)
+    except Exception as e:
+        return json.dumps({'ok': False, 'error': f'Could not reach Ollama: {e}'})
+
+    if not answer:
+        return json.dumps({'ok': False, 'error': 'Ollama returned an empty answer.'})
+
+    return json.dumps({'ok': True, 'answer': answer, 'sources': candidates[:8]})
+
+
+
 @requires_auth
 def api_filter_events():
     """Durchsucht den KOMPLETTEN Bestand (nicht nur die im Dashboard geladenen/
