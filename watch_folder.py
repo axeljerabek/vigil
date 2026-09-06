@@ -215,6 +215,37 @@ def _passes_detection_filter(video_path, run_detection, model, logger=print):
         return True
 
 
+def _mark_processed(path):
+    """Legt einen kleinen Marker neben der Originaldatei ab, der Größe und
+    Änderungszeit zum Verarbeitungszeitpunkt festhält -- verhindert, dass
+    eine Datei, die (mangels WATCH_FOLDER_DELETE_SOURCE, dem Standard) im
+    Ordner liegen bleibt, beim nächsten Schleifendurchlauf erneut als 'neu'
+    erkannt und endlos wiederverarbeitet wird. Eine echte Datei auf der
+    Platte statt nur ein In-Memory-Zustand -- übersteht auch einen Neustart
+    des Watchfolder-Prozesses. Ändert sich die Datei später wirklich (neue
+    Aufnahme unter demselben Namen), stimmen Größe/Zeit nicht mehr überein
+    und sie wird korrekt erneut verarbeitet."""
+    try:
+        stat = os.stat(path)
+        with open(path + ".vigilimported", "w") as f:
+            json.dump({"size": stat.st_size, "mtime": stat.st_mtime}, f)
+    except Exception:
+        pass
+
+
+def _already_processed(path):
+    marker_path = path + ".vigilimported"
+    if not os.path.exists(marker_path):
+        return False
+    try:
+        with open(marker_path) as f:
+            marker = json.load(f)
+        stat = os.stat(path)
+        return marker.get("size") == stat.st_size and marker.get("mtime") == stat.st_mtime
+    except Exception:
+        return False
+
+
 def process_file(src_path, source_name, delete_source, run_detection, model, logger=print):
     """Ein einzelner, vollständig geschriebener Fund aus dem Import-Ordner
     wird hierdurch komplett durchgeschleust: Container-Absicherung, optionaler
@@ -426,6 +457,13 @@ class WatchFolderAgent(multiprocessing.Process):
                     elif now - entry["last_change"] >= LIVE_SOURCE_IDLE_TIMEOUT_SEC:
                         print(f"🎬 [Watchfolder] Live-Quelle '{path}' seit {LIVE_SOURCE_IDLE_TIMEOUT_SEC}s ohne Änderung -- vermutlich beendet, stoppe.")
                         _stop_live_source(entry)
+                        # WICHTIG: als verarbeitet markieren, BEVOR aus
+                        # live_sources entfernt wird -- sonst würde dieselbe,
+                        # unverändert liegen gebliebene Datei (Standard:
+                        # WATCH_FOLDER_DELETE_SOURCE ist aus) im nächsten
+                        # Durchlauf wieder als "neu" erkannt und der Live-
+                        # Modus endlos neu gestartet.
+                        _mark_processed(path)
                         live_sources.pop(path, None)
 
                 # Dateien, deren Streamability beim letzten Versuch noch
@@ -473,6 +511,11 @@ class WatchFolderAgent(multiprocessing.Process):
                 for path in current_files:
                     if path in live_sources or path in pending_probe:
                         continue  # werden oben bereits behandelt
+                    if path not in seen and _already_processed(path):
+                        # Liegt unverändert seit der letzten Verarbeitung da
+                        # (Standard: WATCH_FOLDER_DELETE_SOURCE ist aus) --
+                        # NICHT erneut als "neu" behandeln, sonst Endlosschleife.
+                        continue
                     try:
                         size = os.path.getsize(path)
                     except OSError:
@@ -510,12 +553,28 @@ class WatchFolderAgent(multiprocessing.Process):
                             seen[path] = (size, now)
                         elif now - last_change >= stability_sec:
                             process_file(path, source_name, delete_source, run_detection, model)
+                            # Falls die Quelle liegen bleibt (Standard:
+                            # WATCH_FOLDER_DELETE_SOURCE ist aus), verhindert
+                            # der Marker eine endlose Neuverarbeitung beim
+                            # nächsten Durchlauf.
+                            if os.path.exists(path):
+                                _mark_processed(path)
                             seen.pop(path, None)
 
                 # Verwaiste Einträge (Datei zwischenzeitlich verschwunden) aufräumen
                 for path in list(seen.keys()):
                     if path not in current_files:
                         seen.pop(path, None)
+
+                # Verwaiste .vigilimported-Marker aufräumen (Original inzwischen
+                # gelöscht) -- rein kosmetisch, sonst sammeln sich mit der Zeit
+                # nutzlose kleine Dateien im Watchfolder an.
+                for marker_path in glob.glob(os.path.join(folder, "*.vigilimported")):
+                    if not os.path.exists(marker_path[:-len(".vigilimported")]):
+                        try:
+                            os.remove(marker_path)
+                        except OSError:
+                            pass
 
                 time.sleep(POLL_INTERVAL_SEC)
         except GracefulShutdown:
