@@ -14,32 +14,36 @@ trash
 # Runtime data, alerts & logs (mit gitkeep Erhalt)
 alerts/*
 !alerts/.gitkeep
-logs/*
+logs/* 
 !logs/.gitkeep
-database/*.db
 *.log
 *.mp4
+
+# Datenbanken -- egal ob im Projektroot oder einem Unterordner
+*.db
+database/*.db
+
+# Watchfolder-Live-Modus / Postprocess-Laufzeitdateien
+.anomaly_models/
+.live_hls/
+.postprocess.lock
+.mam_jobs/
+*.pid
 
 # Config, Environment & Backups / Overrides
 .env
 config.py
 *.bkp
+*.bak
 stream_overrides.json
 pipeline_settings.json
+streams.json
+search_index.db
+api_keys.json
+agent_config.json.bak
 
 # IDE / OS specific
 .vscode/
 .idea/
 .DS_Store
 v10/
-streams.json
-search_index.db
-
-api_keys.json
-.mam_jobs/
-
-agent_config.json.bak
-
-agent_config.json.bak
-
-agent_config.json.bak
