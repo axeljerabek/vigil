@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ 'light' if settings.get('THEME') == 'light' else 'dark' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#14131b">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <title>vigil Settings</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body { padding: 20px; max-width: 1100px; margin: 0 auto; }
+    </style>
+</head>
+<body>
+    <div id="confirmModal" class="lightbox" onclick="if (event.target === this) _resolveConfirm(false)">
+        <div class="lightbox-content confirm-modal-content" onclick="event.stopPropagation()">
+            <div class="confirm-modal-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <p id="confirmModalText"></p>
+            <div class="confirm-modal-actions">
+                <button type="button" class="btn-select-all" onclick="_resolveConfirm(false)">Cancel</button>
+                <button type="button" id="confirmModalOkBtn" class="btn-delete-outline" onclick="_resolveConfirm(true)">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        <details class="collapse-card">
+            <summary>
+                <span><i class="fa-solid fa-video"></i> Cameras</span>
+                <i class="fa-solid fa-chevron-down chevron"></i>
+            </summary>
+            <div class="collapse-body">
+                <p class="settings-hint" style="margin-top: -4px;">
+                    Add, edit, or remove cameras here — no need to touch <code>config.py</code> anymore.
+                    Saving restarts the recording pipeline automatically so new cameras start being watched
+                    right away. The live preview for a brand-new camera specifically needs the dashboard
+                    itself (<code>web_ui.py</code>) restarted too — everything else (recording, detection)
+                    works immediately. Each camera has two independent toggles: <strong>Video</strong>
+                    (object detection + recording) and <i class="fa-solid fa-microphone"></i>
+                    (this camera's microphone feeds the audio trigger, if enabled globally in Settings
+                    above — turning it off here only affects this one camera).
+                </p>
+                <form action="/save_streams" method="POST" id="streamsForm" onsubmit="handleStreamsSubmit(event); return false;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <div id="streamRows">
+                        {% for s in streams_full %}
+                        <div class="stream-row">
+                            <input type="text" name="stream_name" value="{{ s.name }}" placeholder="Name" required>
+                            <input type="text" name="stream_url" value="{{ s.url }}" placeholder="rtmp://, rtsp://, /dev/video0, or a YouTube/Twitch/Vimeo URL" required>
+                            <input type="hidden" name="stream_enabled_flag" value="{{ '1' if s.enabled else '0' }}">
+                            <label class="stream-row-toggle">
+                                <input type="checkbox" {% if s.enabled %}checked{% endif %} onchange="this.parentElement.previousElementSibling.value = this.checked ? '1' : '0'">
+                                Video
+                            </label>
+                            <input type="hidden" name="stream_audio_enabled_flag" value="{{ '1' if s.get('audio_enabled', True) else '0' }}">
+                            <label class="stream-row-toggle">
+                                <input type="checkbox" {% if s.get('audio_enabled', True) %}checked{% endif %} onchange="this.parentElement.previousElementSibling.value = this.checked ? '1' : '0'">
+                                <i class="fa-solid fa-microphone"></i>
+                            </label>
+                            <button type="button" class="btn-delete" onclick="this.closest('.stream-row').remove()" title="Remove camera"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="button" class="btn-add-camera" onclick="addStreamRow()"><i class="fa-solid fa-plus"></i> Add Camera</button>
+                    <button type="submit" class="btn-save" style="margin-top: 14px;"><i class="fa-solid fa-arrows-rotate"></i> Save Cameras</button>
+                </form>
+            </div>
+        </details>
+
+        <details class="collapse-card">
+            <summary>
+                <span><i class="fa-solid fa-sliders"></i> System Settings</span>
+                <i class="fa-solid fa-chevron-down chevron"></i>
+            </summary>
+            <div class="collapse-body">
+                <form action="/save_settings" method="POST" id="settingsForm" onsubmit="handleSettingsSubmit(event); return false;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                    <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-robot"></i> AI Model</div>
+                        <div class="settings-grid">
+                            <div class="settings-group">
+                                <label>YOLO Version</label>
+                                <select name="YOLO_VERSION">
+                                    <option value="v10" {% if settings.get('YOLO_VERSION', 'v10') == 'v10' %}selected{% endif %}>YOLOv10</option>
+                                    <option value="v12" {% if settings.get('YOLO_VERSION') == 'v12' %}selected{% endif %}>YOLOv12</option>
+                                    <option value="v26" {% if settings.get('YOLO_VERSION') == 'v26' %}selected{% endif %}>YOLO26</option>
+                                </select>
+                            </div>
+                            <div class="settings-group">
+                                <label>Model Size</label>
+                                <select name="MODEL_SIZE">
+                                    <option value="n" {% if settings.get('MODEL_SIZE') == 'n' %}selected{% endif %}>Nano (n)</option>
+                                    <option value="s" {% if settings.get('MODEL_SIZE') == 's' %}selected{% endif %}>Small (s)</option>
+                                    <option value="m" {% if settings.get('MODEL_SIZE') == 'm' %}selected{% endif %}>Medium (m)</option>
+                                    <option value="b" {% if settings.get('MODEL_SIZE') == 'b' %}selected{% endif %}>Big (b - v10 only)</option>
+                                    <option value="l" {% if settings.get('MODEL_SIZE') == 'l' %}selected{% endif %}>Large (l)</option>
+                                    <option value="x" {% if settings.get('MODEL_SIZE', 'x') == 'x' %}selected{% endif %}>Extra Large (x - RTX 5090)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-crosshairs"></i> Detection</div>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label>Confidence Threshold</label>
+                            <div class="range-wrap">
+                                <input type="range" min="0.1" max="1.0" step="0.05" name="CONFIDENCE_THRESHOLD" value="{{ settings.CONFIDENCE_THRESHOLD }}" oninput="document.getElementById('conf_val').innerText = this.value">
+                                <span id="conf_val" class="range-val">{{ settings.CONFIDENCE_THRESHOLD }}</span>
+                            </div>
+                        </div>
+                        <div class="settings-group">
+                            <label>Object Categories</label>
+                            <div class="multiselect">
+                                <div class="selectBox" onclick="toggleCheckboxes()">
+                                    <select>
+                                        <option id="category-summary">Loading categories...</option>
+                                    </select>
+                                    <div class="overSelect"></div>
+                                </div>
+                                <div id="checkboxes">
+                                    {% for class_id, class_name in available_classes.items() %}
+                                        <label for="cls_{{ class_id }}">
+                                            <input type="checkbox" id="cls_{{ class_id }}" name="DETECTION_CLASSES" value="{{ class_id }}"
+                                            {% if class_id in settings.DETECTION_CLASSES %}checked{% endif %}
+                                            onchange="updateCategorySummary()" />
+                                            {{ class_name }}
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-film"></i> Recording Timing</div>
+                        <div class="settings-grid settings-grid-3">
+                            <div class="settings-group">
+                                <label>Target FPS</label>
+                                <input type="number" name="TARGET_FPS" value="{{ settings.TARGET_FPS }}" required>
+                            </div>
+                            <div class="settings-group">
+                                <label>Pre-Roll (Sec)</label>
+                                <input type="number" name="PRE_ROLL_SEC" value="{{ settings.PRE_ROLL_SEC }}" required>
+                            </div>
+                            <div class="settings-group">
+                                <label>Post-Roll (Sec)</label>
+                                <input type="number" name="POST_ROLL_SEC" value="{{ settings.POST_ROLL_SEC }}" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-hard-drive"></i> Storage</div>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label>Automatically delete unarchived recordings after (days, 0 = never)</label>
+                            <input type="number" name="RETENTION_DAYS" min="0" max="365" value="{{ settings.get('RETENTION_DAYS', 0) }}">
+                        </div>
+                        <div class="settings-grid">
+                            <div class="settings-group">
+                                <label>Filmstrip frames per video (0 = off)</label>
+                                <input type="number" name="FILMSTRIP_COUNT" min="0" max="2000" value="{{ settings.get('FILMSTRIP_COUNT', 0) }}">
+                            </div>
+                            <div class="settings-group">
+                                <label>Filmstrip interval (sec.)</label>
+                                <input type="number" name="FILMSTRIP_INTERVAL_SEC" min="0.5" max="30" step="0.5" value="{{ settings.get('FILMSTRIP_INTERVAL_SEC', 2.0) }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Video Analysis (Ollama)</div>
+                        <p class="settings-hint" style="margin-top: -4px; margin-bottom: 12px;">
+                            Optional: after each recording, sends the large filmstrip frames (see above,
+                            must be &gt; 0) to a self-hosted <strong>Ollama</strong> instance with a
+                            vision model and has it describe what happened in the video. Off by default —
+                            needs a running Ollama instance with a suitable model, e.g.:
+                            <code>docker exec -it ollama ollama pull llava:latest</code>
+                            (~5-8 GB VRAM in addition to the pipeline). Just leave it off if you don't run Ollama.
+                            <strong>Important:</strong> Ollama has no native video support — every model
+                            always receives an image sequence (the filmstrip frames), never the video file
+                            itself. For unfamiliar/untested models, check first whether they actually
+                            process images at all (some "uncensored" finetunes are text-only models
+                            with no vision support).
+                        </p>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="AI_ANALYSIS_ENABLED" {% if settings.get('AI_ANALYSIS_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Enable
+                            </label>
+                            <span id="ollamaStatus" class="ollama-status-badge" style="margin-top:8px; display:inline-flex;"><span class="rec-dot"></span>Checking...</span>
+                        </div>
+                        <div class="settings-grid">
+                            <div class="settings-group">
+                                <label>Ollama URL</label>
+                                <input type="text" name="OLLAMA_URL" value="{{ settings.get('OLLAMA_URL', 'http://localhost:11434') }}">
+                            </div>
+                            <div class="settings-group">
+                                <label>Vision Model</label>
+                                {% set known_models = ['llava:latest', 'huihui_ai/qwen3-vl-abliterated:8b', 'orcarouter/Qwen3.8-27B-Uncensored', 'orcarouter/Qwen3.8-27B-Uncensored:iq4_xs'] %}
+                                {% set current_model = settings.get('OLLAMA_VISION_MODEL', 'huihui_ai/qwen3-vl-abliterated:8b') %}
+                                <select id="ollamaModelPreset" {% if current_model in known_models %}name="OLLAMA_VISION_MODEL"{% endif %} onchange="onModelPresetChange()">
+                                    <option value="huihui_ai/qwen3-vl-abliterated:8b" {% if current_model == 'huihui_ai/qwen3-vl-abliterated:8b' %}selected{% endif %}>huihui_ai/qwen3-vl-abliterated:8b — uncensored, vision confirmed ✅</option>
+                                    <option value="llava:latest" {% if current_model == 'llava:latest' %}selected{% endif %}>llava:latest — very reliable, tested ✅</option>
+                                    <option value="orcarouter/Qwen3.8-27B-Uncensored:iq4_xs" {% if current_model == 'orcarouter/Qwen3.8-27B-Uncensored:iq4_xs' %}selected{% endif %}>orcarouter/Qwen3.8-27B-Uncensored:iq4_xs — 16GB, uncensored, vision untouched</option>
+                                    <option value="orcarouter/Qwen3.8-27B-Uncensored" {% if current_model == 'orcarouter/Qwen3.8-27B-Uncensored' %}selected{% endif %}>orcarouter/Qwen3.8-27B-Uncensored:latest — 18GB (=q4_K_M), uncensored, vision untouched</option>
+                                    <option value="__custom__" {% if current_model not in known_models %}selected{% endif %}>Custom model…</option>
+                                </select>
+                                <input type="text" id="ollamaModelCustom" {% if current_model not in known_models %}name="OLLAMA_VISION_MODEL"{% endif %} value="{{ current_model }}" placeholder="e.g. llava:13b" style="margin-top:6px; {% if current_model in known_models %}display:none;{% endif %}">
+                            </div>
+                            <div class="settings-group">
+                                <label>Max. frames per analysis</label>
+                                <input type="number" name="AI_ANALYZE_MAX_FRAMES" min="1" max="64" value="{{ settings.get('AI_ANALYZE_MAX_FRAMES', 12) }}">
+                            </div>
+                            <div class="settings-group">
+                                <label>Ollama context size (num_ctx)</label>
+                                <input type="number" name="OLLAMA_CONTEXT_SIZE" min="0" max="262144" step="512" value="{{ settings.get('OLLAMA_CONTEXT_SIZE', 0) }}" placeholder="0 = Ollama's own default">
+                                <p class="settings-hint" style="margin-top:4px;">0 leaves Ollama's own default untouched. Each analyzed frame costs roughly 1000-1100 tokens (varies by model/resolution) — so at "Max. frames per analysis" = 64, a full batch needs around 65,000-70,000 tokens total. If you see "exceeds the available context size" errors, raise this above that number, e.g. 98304 gives comfortable headroom for 64 frames. Rule of thumb: (max frames × ~1100) + a few thousand for the prompt. A larger value needs more GPU memory for the KV cache, so raise it carefully on limited-VRAM hardware (e.g. a small NUC) — start low and increase only if you still hit the error.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-ear-listen"></i> Audio Trigger (CLAP, optional)</div>
+                        <p class="settings-hint" style="margin-top: -4px; margin-bottom: 12px;">
+                            In addition to image detection: also triggers a recording when a configured
+                            <strong>sound</strong> is detected — regardless of whether anything is visible
+                            in the frame. Uses <a href="https://github.com/LAION-AI/CLAP" target="_blank" rel="noopener">CLAP</a>,
+                            a model that compares audio directly with freely entered text — no fixed
+                            category list like classic sound classifiers. One category per line, any
+                            number active at once, e.g.:
+                            <code>whispering</code>, <code>glass breaking</code>, <code>dog barking</code>,
+                            <code>screaming</code>. Runs in its own background thread — never blocks
+                            recording, even with a slow or missing GPU. Requires
+                            <code>pip install transformers</code> in the venv; without it, the feature
+                            simply stays inactive (no error).
+                        </p>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="AUDIO_TRIGGER_ENABLED" {% if settings.get('AUDIO_TRIGGER_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Enable
+                            </label>
+                        </div>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label>Categories (one per line)</label>
+                            <textarea name="AUDIO_TRIGGER_CATEGORIES" rows="6" style="width:100%; background:var(--card-bg-inset); border:1px solid var(--border); color:var(--text); border-radius:var(--radius-sm); padding:10px 12px; font-family:var(--font-mono); font-size:0.9rem;" placeholder="whispering&#10;glass breaking&#10;dog barking&#10;screaming">{{ settings.get('AUDIO_TRIGGER_CATEGORIES', ['speaking', 'whispering', 'drawer opening', 'drawer sliding', 'curtain opening', 'fabric rustling', 'footsteps', 'door creaking', 'window opening', 'keys jingling'])|join('\n') }}</textarea>
+                        </div>
+                        <div class="settings-grid">
+                            <div class="settings-group">
+                                <label>Threshold (similarity)</label>
+                                <div class="range-wrap">
+                                    <input type="range" min="0.05" max="0.95" step="0.05" name="AUDIO_TRIGGER_THRESHOLD" value="{{ settings.get('AUDIO_TRIGGER_THRESHOLD', 0.3) }}" oninput="document.getElementById('audiothresh_val').innerText = this.value">
+                                    <span id="audiothresh_val" class="range-val">{{ settings.get('AUDIO_TRIGGER_THRESHOLD', 0.3) }}</span>
+                                </div>
+                            </div>
+                            <div class="settings-group">
+                                <label>Check interval (sec.)</label>
+                                <input type="number" name="AUDIO_TRIGGER_INTERVAL_SEC" min="0.5" max="30" step="0.5" value="{{ settings.get('AUDIO_TRIGGER_INTERVAL_SEC', 2.0) }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-tag"></i> Topic Classification (via Vision Model, optional)</div>
+                        <p class="settings-hint" style="margin-top: -4px; margin-bottom: 12px;">
+                            Adds a second question to each AI analysis: how well does the scene match one
+                            of your own categories, e.g. <code>break-in</code>, <code>accident</code>,
+                            <code>mail carrier</code>? One per line, any number. The best-matching category
+                            (if above the threshold) is shown next to the description, saved to the sidecar
+                            metadata, and searchable. <strong>Honest caveat:</strong> this is the vision
+                            model's own self-reported guess via a prompt — not a calibrated probability
+                            like the detection confidence above. Treat it as a useful sorting signal, not
+                            a certainty. Requires AI Video Analysis (above) to be enabled.
+                        </p>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="AI_TOPICS_ENABLED" {% if settings.get('AI_TOPICS_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Enable
+                            </label>
+                        </div>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label>Categories (one per line)</label>
+                            <textarea name="AI_TOPICS" rows="4" style="width:100%; background:var(--card-bg-inset); border:1px solid var(--border); color:var(--text); border-radius:var(--radius-sm); padding:10px 12px; font-family:var(--font-mono); font-size:0.9rem;" placeholder="break-in&#10;accident&#10;mail carrier">{{ settings.get('AI_TOPICS', [])|join('\n') }}</textarea>
+                        </div>
+                        <div class="settings-group">
+                            <label>Threshold (% match to count as detected)</label>
+                            <div class="range-wrap">
+                                <input type="range" min="0" max="100" step="5" name="AI_TOPICS_THRESHOLD" value="{{ settings.get('AI_TOPICS_THRESHOLD', 50) }}" oninput="document.getElementById('topicsthresh_val').innerText = this.value + '%'">
+                                <span id="topicsthresh_val" class="range-val">{{ settings.get('AI_TOPICS_THRESHOLD', 50)|int }}%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-closed-captioning"></i> Speech Transcription (Whisper, optional)</div>
+                        <p class="settings-hint" style="margin-top: -4px; margin-bottom: 12px;">
+                            Transcribes spoken audio from each recording using a locally-run Whisper
+                            model — separate from the audio trigger above (CLAP only recognizes sound
+                            <em>categories</em>, not actual words). The result is saved to the sidecar
+                            metadata and is semantically searchable, just like the AI description.
+                        </p>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="TRANSCRIPTION_ENABLED" {% if settings.get('TRANSCRIPTION_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Enable
+                            </label>
+                        </div>
+                        <div class="settings-grid">
+                            <div class="settings-group">
+                                <label>Model size</label>
+                                <select name="WHISPER_MODEL_SIZE">
+                                    {% set whisper_model = settings.get('WHISPER_MODEL_SIZE', 'small') %}
+                                    <option value="tiny" {% if whisper_model == 'tiny' %}selected{% endif %}>Tiny (fastest, least accurate)</option>
+                                    <option value="base" {% if whisper_model == 'base' %}selected{% endif %}>Base</option>
+                                    <option value="small" {% if whisper_model == 'small' %}selected{% endif %}>Small (recommended default)</option>
+                                    <option value="medium" {% if whisper_model == 'medium' %}selected{% endif %}>Medium</option>
+                                    <option value="large-v3" {% if whisper_model == 'large-v3' %}selected{% endif %}>Large-v3 (most accurate, slowest)</option>
+                                </select>
+                            </div>
+                            <div class="settings-group">
+                                <label>Language (blank = auto-detect)</label>
+                                <input type="text" name="TRANSCRIPTION_LANGUAGE" value="{{ settings.get('TRANSCRIPTION_LANGUAGE', '') }}" placeholder="e.g. en, de — blank for auto">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-user-group"></i> Face Recognition (optional)</div>
+                        <p class="settings-hint" style="margin-top: -4px; margin-bottom: 12px;">
+                            Detects faces in each recording, groups similar ones together, and lets you
+                            name the groups in the <strong>People</strong> section below. New faces are
+                            checked against already-named people automatically; anything unmatched needs
+                            a "Re-cluster" run (People section) before it can be named. Runs entirely
+                            locally via <a href="https://github.com/deepinsight/insightface" target="_blank" rel="noopener">InsightFace</a>.
+                        </p>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="FACE_RECOGNITION_ENABLED" {% if settings.get('FACE_RECOGNITION_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Enable
+                            </label>
+                        </div>
+                        <div class="settings-grid">
+                            <div class="settings-group">
+                                <label>Model pack</label>
+                                <select name="FACE_MODEL_PACK">
+                                    {% set face_pack = settings.get('FACE_MODEL_PACK', 'buffalo_s') %}
+                                    <option value="buffalo_s" {% if face_pack == 'buffalo_s' %}selected{% endif %}>buffalo_s (fastest)</option>
+                                    <option value="buffalo_m" {% if face_pack == 'buffalo_m' %}selected{% endif %}>buffalo_m</option>
+                                    <option value="buffalo_l" {% if face_pack == 'buffalo_l' %}selected{% endif %}>buffalo_l (most accurate buffalo)</option>
+                                    <option value="antelopev2" {% if face_pack == 'antelopev2' %}selected{% endif %}>antelopev2 (largest, slowest)</option>
+                                </select>
+                            </div>
+                            <div class="settings-group">
+                                <label>Min. detection confidence</label>
+                                <div class="range-wrap">
+                                    <input type="range" min="0.1" max="0.95" step="0.05" name="FACE_MIN_CONFIDENCE" value="{{ settings.get('FACE_MIN_CONFIDENCE', 0.5) }}" oninput="document.getElementById('faceconf_val').innerText = Math.round(this.value * 100) + '%'">
+                                    <span id="faceconf_val" class="range-val">{{ (settings.get('FACE_MIN_CONFIDENCE', 0.5) * 100)|int }}%</span>
+                                </div>
+                            </div>
+                            <div class="settings-group">
+                                <label>Known-person match threshold</label>
+                                <div class="range-wrap">
+                                    <input type="range" min="0.1" max="0.95" step="0.05" name="FACE_KNOWN_PERSON_THRESHOLD" value="{{ settings.get('FACE_KNOWN_PERSON_THRESHOLD', 0.5) }}" oninput="document.getElementById('faceknown_val').innerText = Math.round(this.value * 100) + '%'">
+                                    <span id="faceknown_val" class="range-val">{{ (settings.get('FACE_KNOWN_PERSON_THRESHOLD', 0.5) * 100)|int }}%</span>
+                                </div>
+                                <p class="settings-hint" style="margin-top:4px;">How closely a new face must match an already-named person to be auto-assigned. Lower it if the same real person keeps showing up as separate unnamed groups.</p>
+                            </div>
+                            <div class="settings-group">
+                                <label>Cluster grouping looseness</label>
+                                <div class="range-wrap">
+                                    <input type="range" min="0.1" max="0.9" step="0.05" name="FACE_CLUSTER_EPS" value="{{ settings.get('FACE_CLUSTER_EPS', 0.4) }}" oninput="document.getElementById('facecluster_val').innerText = this.value">
+                                    <span id="facecluster_val" class="range-val">{{ settings.get('FACE_CLUSTER_EPS', 0.4) }}</span>
+                                </div>
+                                <p class="settings-hint" style="margin-top:4px;">How willing "Re-cluster unlabeled faces" is to group different-looking crops together as one unnamed person. Lower = stricter/more groups, higher = looser/fewer groups.</p>
+                            </div>
+                            <div class="settings-group">
+                                <label>Min. faces per unlabeled group</label>
+                                <input type="number" min="2" max="10" step="1" name="FACE_CLUSTER_MIN_SAMPLES" value="{{ settings.get('FACE_CLUSTER_MIN_SAMPLES', 2) }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-hard-drive"></i> Storage</div>
+                        <p class="settings-hint" style="margin-top: -4px; margin-bottom: 12px;">
+                            Where recordings actually live. By default, everything is stored inside the
+                            project folder itself — on the same drive as the system, if that's where vigil
+                            is installed. Point this at a separate, larger drive if you expect to record a
+                            lot. <strong>Changing this does not move existing recordings</strong> — only new
+                            ones, from the next pipeline restart onward, go to the new location. See the
+                            Storage Status card below for live disk space per configured folder.
+                        </p>
+                        <div class="settings-group">
+                            <label>Recordings folder (leave empty for default: project folder)</label>
+                            <input type="text" name="ALERTS_DIR_OVERRIDE" value="{{ settings.get('ALERTS_DIR_OVERRIDE', '') }}" placeholder="/mnt/big-drive/vigil-recordings">
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-file-export"></i> Export</div>
+                        <p class="settings-hint" style="margin-top: -4px; margin-bottom: 12px;">
+                            Copies the video, thumbnail, and all sidecar metadata for an event into its
+                            own folder, named e.g. <code>Event_Garden_20260830_081734 Topic_Accident</code>.
+                            Leave empty to hide the Export button. Two destination types:
+                            <strong>local path</strong> (e.g. <code>/mnt/backup/vigil-exports</code>) copies
+                            directly; <strong>remote path</strong> (e.g. <code>user@host:/path</code>) uses
+                            <code>rsync</code> — this requires passwordless SSH key access to already be set
+                            up between this machine and the remote one; nothing here can configure that for you.
+                        </p>
+                        <div class="settings-group">
+                            <label>Export folder</label>
+                            <input type="text" name="EXPORT_DIR" value="{{ settings.get('EXPORT_DIR', '') }}" placeholder="/mnt/backup/vigil-exports or user@host:/path">
+                        </div>
+                        <div class="settings-group">
+                            <label>What to include</label>
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:6px;">
+                                <input type="checkbox" name="EXPORT_INCLUDE_VIDEO" {% if settings.get('EXPORT_INCLUDE_VIDEO', True) %}checked{% endif %} style="width:auto;">
+                                Video file
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:6px;">
+                                <input type="checkbox" name="EXPORT_INCLUDE_METADATA" {% if settings.get('EXPORT_INCLUDE_METADATA', True) %}checked{% endif %} style="width:auto;">
+                                Sidecar metadata (trigger screenshot, AI description/topics JSON, XMP)
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:6px;">
+                                <input type="checkbox" name="EXPORT_INCLUDE_LARGE_THUMBS" {% if settings.get('EXPORT_INCLUDE_LARGE_THUMBS', True) %}checked{% endif %} style="width:auto;">
+                                Large filmstrip thumbnails
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-top:6px;">
+                                <input type="checkbox" name="EXPORT_INCLUDE_SMALL_THUMBS" {% if settings.get('EXPORT_INCLUDE_SMALL_THUMBS', True) %}checked{% endif %} style="width:auto;">
+                                Small filmstrip thumbnails
+                            </label>
+                            <p class="settings-hint" style="margin-top:8px;">Applies to every future export (single or bulk) until changed here again.</p>
+                        </div>
+                        <div class="settings-group">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; color:var(--danger);">
+                                <input type="checkbox" name="EXPORT_DELETE_AFTER" {% if settings.get('EXPORT_DELETE_AFTER', False) %}checked{% endif %} style="width:auto;">
+                                Delete the original from vigil after a successful export
+                            </label>
+                            <p class="settings-hint" style="margin-top:4px;">Only deletes once the export is confirmed successful — never if the export fails partway through. Off by default; this is permanent, there's no undo.</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-folder-open"></i> Watchfolder Import (optional)</div>
+                        <p class="settings-hint" style="margin-top: -4px; margin-bottom: 12px;">
+                            Watches a folder for video files dropped in from elsewhere (e.g. a phone backup,
+                            an old NVR export, a network share) and imports them automatically once a file
+                            has stopped growing — treats each as a finished recording: renamed, filmstrip
+                            generated, and run through the same AI post-processing as a live camera event.
+                            Runs as its own background process; enabling/disabling requires a pipeline restart
+                            (automatic if the pipeline is already running).
+                        </p>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="WATCH_FOLDER_ENABLED" {% if settings.get('WATCH_FOLDER_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Enable
+                            </label>
+                        </div>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label>Import folder</label>
+                            <input type="text" name="WATCH_FOLDER_PATH" value="{{ settings.get('WATCH_FOLDER_PATH', '') }}" placeholder="/mnt/imports/vigil-dropbox">
+                        </div>
+                        <div class="settings-grid">
+                            <div class="settings-group">
+                                <label>Source name (used as camera name in filenames)</label>
+                                <input type="text" name="WATCH_FOLDER_SOURCE_NAME" value="{{ settings.get('WATCH_FOLDER_SOURCE_NAME', 'Import') }}" placeholder="Import">
+                            </div>
+                            <div class="settings-group">
+                                <label>Stability wait (seconds)</label>
+                                <input type="number" name="WATCH_FOLDER_STABILITY_SEC" min="1" max="300" value="{{ settings.get('WATCH_FOLDER_STABILITY_SEC', 5) }}">
+                            </div>
+                        </div>
+                        <p class="settings-hint" style="margin-top:4px;">
+                            How long a file's size must stay unchanged before it's considered fully written
+                            and safe to import — Linux has no reliable "file is done" signal, so this is a
+                            practical stand-in. Raise it if you're importing over a slow network share.
+                        </p>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="WATCH_FOLDER_DELETE_SOURCE" {% if settings.get('WATCH_FOLDER_DELETE_SOURCE') %}checked{% endif %} style="width:auto;">
+                                Delete original file from the import folder after a successful import
+                            </label>
+                        </div>
+                        <div class="settings-group">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="WATCH_FOLDER_RUN_DETECTION" {% if settings.get('WATCH_FOLDER_RUN_DETECTION') %}checked{% endif %} style="width:auto;">
+                                Only keep files containing a configured detection class (runs YOLO once per file)
+                            </label>
+                        </div>
+                        <div class="settings-group">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="WATCH_FOLDER_LIVE_MODE_ENABLED" {% if settings.get('WATCH_FOLDER_LIVE_MODE_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Read growing files live instead of waiting for them to finish
+                            </label>
+                            <p class="settings-hint" style="margin-top:4px;">Only works for streamable sources (MPEG-TS, or "fast-start" MP4 with the index written first) — checked automatically per file. A classic MP4 that only becomes readable once finished falls back to waiting, same as with this off. Runs the file through the same detection/recording pipeline as a real camera instead of a blind import at the end.</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-house-signal"></i> Home Assistant / MQTT (optional)</div>
+                        <p class="settings-hint" style="margin-top: -4px; margin-bottom: 12px;">
+                            Publishes camera events to an MQTT broker — a "Recording" motion-style sensor per
+                            camera (on while a recording is in progress) and a "Last Event" sensor with the
+                            AI description, once analysis finishes. With Home Assistant Discovery enabled
+                            (default), these appear automatically under Settings → Devices &amp; Services → MQTT
+                            in Home Assistant, no YAML needed. Requires <code>pip install paho-mqtt</code> in
+                            the pipeline's virtual environment. Off by default; never blocks or slows down
+                            recording even if the broker is unreachable.
+                        </p>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="MQTT_ENABLED" {% if settings.get('MQTT_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Enable
+                            </label>
+                        </div>
+                        <div class="settings-grid">
+                            <div class="settings-group">
+                                <label>Broker host</label>
+                                <input type="text" name="MQTT_BROKER" value="{{ settings.get('MQTT_BROKER', '') }}" placeholder="192.168.1.10 or homeassistant.local">
+                            </div>
+                            <div class="settings-group">
+                                <label>Broker port</label>
+                                <input type="number" name="MQTT_PORT" min="1" max="65535" value="{{ settings.get('MQTT_PORT', 1883) }}">
+                            </div>
+                        </div>
+                        <div class="settings-grid">
+                            <div class="settings-group">
+                                <label>Username (optional)</label>
+                                <input type="text" name="MQTT_USERNAME" value="{{ settings.get('MQTT_USERNAME', '') }}" autocomplete="off">
+                            </div>
+                            <div class="settings-group">
+                                <label>Password (optional)</label>
+                                <input type="password" name="MQTT_PASSWORD" value="{{ settings.get('MQTT_PASSWORD', '') }}" autocomplete="new-password">
+                            </div>
+                        </div>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label>Topic prefix</label>
+                            <input type="text" name="MQTT_TOPIC_PREFIX" value="{{ settings.get('MQTT_TOPIC_PREFIX', 'vigil') }}" placeholder="vigil">
+                            <p class="settings-hint" style="margin-top:4px;">Events publish under <code>&lt;prefix&gt;/&lt;camera&gt;/recording</code> and <code>&lt;prefix&gt;/&lt;camera&gt;/last_event_summary</code> — useful for your own automations even without Home Assistant.</p>
+                        </div>
+                        <div class="settings-group">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="MQTT_HA_DISCOVERY" {% if settings.get('MQTT_HA_DISCOVERY', True) %}checked{% endif %} style="width:auto;">
+                                Publish Home Assistant MQTT Discovery config (auto-creates entities)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-tower-broadcast"></i> Agent Webhook (optional)</div>
+                        <p class="settings-hint" style="margin-top: -4px; margin-bottom: 12px;">
+                            Proactively notifies an agent (Hermes, or your own script) after each analyzed
+                            recording, instead of it having to poll for changes. Fire-and-forget, same as
+                            MQTT — an unreachable agent never delays or affects the pipeline.
+                        </p>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label>Webhook URL</label>
+                            <input type="text" name="AGENT_WEBHOOK_URL" value="{{ settings.get('AGENT_WEBHOOK_URL', '') }}" placeholder="http://localhost:8787/vigil-event">
+                        </div>
+                        <div class="settings-group">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="AGENT_WEBHOOK_ANOMALY_ONLY" {% if settings.get('AGENT_WEBHOOK_ANOMALY_ONLY') %}checked{% endif %} style="width:auto;">
+                                Only notify for anomalies, not every recording
+                            </label>
+                            <p class="settings-hint" style="margin-top:4px;">Leave off to get every analyzed event; turn on if you only want the agent to hear about the unusual ones (needs Anomaly Detection enabled above to have any anomalies to report).</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-person-falling"></i> Pose Estimation / Fall Detection (optional)</div>
+                        <p class="settings-hint" style="margin-top: -4px; margin-bottom: 12px;">
+                            A separate, small pose model runs only on frames where a person was already
+                            detected — no extra GPU cost on empty scenes. Flags a likely fall based on torso
+                            angle (near-horizontal instead of upright) sustained over several consecutive
+                            frames, not a single frame, so a brief bend (tying shoes, picking something up)
+                            doesn't trigger a false alarm. This is a heuristic, not a calibrated medical
+                            tool — the angle threshold is adjustable if it's too sensitive or not sensitive
+                            enough for your cameras. Requires a pipeline restart to take effect. Off by default.
+                        </p>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="POSE_ESTIMATION_ENABLED" {% if settings.get('POSE_ESTIMATION_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Enable
+                            </label>
+                        </div>
+                        <div class="settings-group">
+                            <label>Fall angle threshold (degrees from vertical)</label>
+                            <input type="number" name="POSE_FALL_ANGLE_THRESHOLD" min="20" max="85" step="1" value="{{ settings.get('POSE_FALL_ANGLE_THRESHOLD', 55) }}">
+                            <p class="settings-hint" style="margin-top:4px;">Lower = more sensitive (flags more postures as falls, more false positives from bending). Higher = only near-fully-horizontal counts.</p>
+                        </div>
+                        <div class="settings-group" style="margin-top:14px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="POSE_RAISED_HANDS_ENABLED" {% if settings.get('POSE_RAISED_HANDS_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Also detect raised hands (both wrists held above the shoulders) — a possible wave or distress signal
+                            </label>
+                            <p class="settings-hint" style="margin-top:4px;">Uses the same pose model as fall detection, at no extra GPU cost. Only one hand raised is treated as an ordinary gesture and ignored.</p>
+                        </div>
+                        <div class="settings-group" style="margin-top:14px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="POSE_LOITERING_ENABLED" {% if settings.get('POSE_LOITERING_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Also detect loitering (a person staying in roughly the same spot)
+                            </label>
+                            <p class="settings-hint" style="margin-top:4px;">Position-based, not pose-based — works even without the pose model. Resets if the person leaves the frame or moves on, so a normal walk-through never triggers it.</p>
+                            <div style="margin-top:8px;">
+                                <label>Loitering threshold (seconds)</label>
+                                <input type="number" name="POSE_LOITERING_SECONDS" min="5" max="600" step="5" value="{{ settings.get('POSE_LOITERING_SECONDS', 30) }}">
+                            </div>
+                        </div>
+                        <div class="settings-group" style="margin-top:14px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="POSE_MOVEMENT_ENABLED" {% if settings.get('POSE_MOVEMENT_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Also detect fast movement (possibly running)
+                            </label>
+                            <p class="settings-hint" style="margin-top:4px;">Position-based, no pose model needed. Speed is measured relative to the person's own size in frame, so it works at any distance from the camera without calibration.</p>
+                        </div>
+                        <div class="settings-group" style="margin-top:14px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="POSE_PROXIMITY_ENABLED" {% if settings.get('POSE_PROXIMITY_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Also detect two or more people in close, sustained proximity
+                            </label>
+                            <p class="settings-hint" style="margin-top:4px;">Position-based. A brief pass-by (e.g. on a sidewalk) doesn't trigger this — only sustained closeness over several seconds.</p>
+                        </div>
+                        <div class="settings-group" style="margin-top:14px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="POSE_GAZE_ENABLED" {% if settings.get('POSE_GAZE_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Also detect head orientation (facing camera vs. facing away)
+                            </label>
+                            <p class="settings-hint" style="margin-top:4px;">Uses the same pose model as fall detection, no extra GPU cost. Informational rather than an alert — logged, not treated as urgent.</p>
+                        </div>
+                        <div class="settings-group" style="margin-top:14px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="POSE_POINTING_ENABLED" {% if settings.get('POSE_POINTING_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Also detect a pointing gesture (one arm extended sideways)
+                            </label>
+                            <p class="settings-hint" style="margin-top:4px;">Uses the same pose model, no extra GPU cost. Also informational rather than an alert.</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-magnifying-glass-chart"></i> Anomaly Detection (optional)</div>
+                        <p class="settings-hint" style="margin-top: -4px; margin-bottom: 12px;">
+                            Flags recordings whose AI description is a statistical outlier compared to that
+                            camera's recent history — reuses the same semantic-search embedding that's
+                            already computed for every event, no new model or GPU cost. Needs a per-camera
+                            baseline (train from the Summaries card, or via cron) before it can flag anything;
+                            a camera needs at least 15 analyzed recordings in the lookback window to train.
+                            Off by default.
+                        </p>
+                        <div class="settings-group">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="ANOMALY_DETECTION_ENABLED" {% if settings.get('ANOMALY_DETECTION_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Enable
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-tv"></i> Display</div>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label>Theme</label>
+                            <select name="THEME">
+                                <option value="dark" {% if settings.get('THEME', 'dark') == 'dark' %}selected{% endif %}>Dark</option>
+                                <option value="light" {% if settings.get('THEME') == 'light' %}selected{% endif %}>Day</option>
+                            </select>
+                        </div>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label>Camera preview rate (grid + live view)</label>
+                            <div class="range-wrap">
+                                <input type="range" min="0.5" max="5" step="0.5" name="THUMBNAIL_FPS" value="{{ settings.get('THUMBNAIL_FPS', 1) }}" oninput="document.getElementById('thumbfps_val').innerText = this.value + ' fps'">
+                                <span id="thumbfps_val" class="range-val">{{ settings.get('THUMBNAIL_FPS', 1) }} fps</span>
+                            </div>
+                        </div>
+                        <div class="settings-group">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="SHOW_DETECTION_BOXES" {% if settings.get('SHOW_DETECTION_BOXES', True) %}checked{% endif %} style="width:auto;">
+                                Draw detection boxes live in preview/lightbox
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-save" id="applyBtn">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span id="applyBtnText">Apply Settings</span>
+                    </button>
+                    <p class="settings-hint">If the pipeline is already running, it will automatically restart on pipeline-relevant changes so they take effect immediately.</p>
+                </form>
+            </div>
+        </details>
+
+        <details class="collapse-card">
+            <summary>
+                <span><i class="fa-solid fa-server"></i> Hardware &amp; System Status</span>
+                <i class="fa-solid fa-chevron-down chevron"></i>
+            </summary>
+            <div class="collapse-body">
+                <div class="ai-model-box">
+                    <div class="ai-model-row">
+                        <span class="ai-model-label"><i class="fa-solid fa-robot"></i> Active AI Model</span>
+                        <span class="ai-model-val" id="stat-active-model">
+                            {% if system_status and system_status.active_model %}
+                                {{ system_status.active_model }}
+                            {% else %}
+                                --
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="ai-model-row">
+                        <span class="ai-model-label"><i class="fa-solid fa-folder-open"></i> Model File</span>
+                        <span style="font-family: monospace; color: var(--text); word-break: break-all;" id="stat-model-file">
+                            {% if system_status and system_status.model_filename %}
+                                {{ system_status.model_filename }}
+                            {% else %}
+                                --
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="system-status-grid">
+                    <div class="status-metric-box">
+                        <div class="status-metric-header">
+                            <span class="metric-label"><i class="fa-solid fa-microchip"></i> CPU</span>
+                            <span id="stat-cpu-text">--%</span>
+                        </div>
+                        <div class="status-metric-value" id="stat-cpu-val">--°C</div>
+                        <div class="status-metric-sub">&nbsp;</div>
+                        <div class="status-progress-bar">
+                            <div id="stat-cpu-bar" class="status-progress-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div class="status-metric-box">
+                        <div class="status-metric-header">
+                            <span class="metric-label"><i class="fa-solid fa-memory"></i> RAM</span>
+                            <span id="stat-ram-text">--%</span>
+                        </div>
+                        <div class="status-metric-value" id="stat-ram-val">-- GB</div>
+                        <div class="status-metric-sub" id="stat-ram-sub">of -- GB total</div>
+                        <div class="status-progress-bar">
+                            <div id="stat-ram-bar" class="status-progress-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div class="status-metric-box">
+                        <div class="status-metric-header">
+                            <span class="metric-label"><i class="fa-solid fa-bolt"></i> VRAM</span>
+                            <span id="stat-vram-text">--%</span>
+                        </div>
+                        <div class="status-metric-value" id="stat-vram-val">-- GB</div>
+                        <div class="status-metric-sub" id="stat-vram-sub">of -- GB total</div>
+                        <div class="status-progress-bar">
+                            <div id="stat-vram-bar" class="status-progress-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div class="status-metric-box">
+                        <div class="status-metric-header">
+                            <span class="metric-label"><i class="fa-solid fa-temperature-half"></i> GPU</span>
+                            <span id="stat-temp-status">Normal</span>
+                        </div>
+                        <div class="status-metric-value" id="stat-temp-val">--°C</div>
+                        <div class="status-metric-sub">&nbsp;</div>
+                        <div class="status-progress-bar">
+                            <div id="stat-temp-bar" class="status-progress-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div class="status-metric-box">
+                        <div class="status-metric-header">
+                            <span class="metric-label"><i class="fa-solid fa-hard-drive"></i> Storage</span>
+                            <span id="stat-disk-text">--%</span>
+                        </div>
+                        <div class="status-metric-value" id="stat-disk-val">-- GB free</div>
+                        <div class="status-metric-sub" id="stat-disk-sub">von -- GB</div>
+                        <div class="status-progress-bar">
+                            <div id="stat-disk-bar" class="status-progress-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div class="status-metric-box">
+                        <div class="status-metric-header">
+                            <span class="metric-label"><i class="fa-solid fa-clapperboard"></i> NVENC</span>
+                        </div>
+                        <div class="status-metric-value" id="stat-nvenc-val">--%</div>
+                        <div class="status-metric-sub">&nbsp;</div>
+                        <div class="status-progress-bar">
+                            <div id="stat-nvenc-bar" class="status-progress-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div class="status-metric-box">
+                        <div class="status-metric-header">
+                            <span class="metric-label"><i class="fa-solid fa-film"></i> NVDEC</span>
+                        </div>
+                        <div class="status-metric-value" id="stat-nvdec-val">--%</div>
+                        <div class="status-metric-sub">&nbsp;</div>
+                        <div class="status-progress-bar">
+                            <div id="stat-nvdec-bar" class="status-progress-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 0.95rem; margin-top: 20px; margin-bottom: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Active Streams &amp; Processes</h3>
+                <div class="table-scroll">
+                    <table class="status-table">
+                        <thead>
+                            <tr>
+                                <th>Stream-Name</th>
+                                <th>PID</th>
+                                <th>Status</th>
+                                <th>CPU (%)</th>
+                                <th>RAM (MB)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="processes-tbody">
+                            {% if system_status and system_status.processes %}
+                                {% for proc in system_status.processes %}
+                                <tr>
+                                    <td>{{ proc.name }}</td>
+                                    <td>{{ proc.pid }}</td>
+                                    <td><span class="badge-running">{{ proc.status }}</span></td>
+                                    <td>{{ proc.cpu }}</td>
+                                    <td>{{ proc.ram }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--text-muted);">No active pipeline processes found.</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </details>
+
+        <details class="collapse-card" id="storageCard" ontoggle="if (this.open) loadStorageStatus();">
+            <summary>
+                <span><i class="fa-solid fa-hard-drive"></i> Storage Status</span>
+                <i class="fa-solid fa-chevron-down chevron"></i>
+            </summary>
+            <div class="collapse-body">
+                <p class="settings-hint" style="margin-top: 0;">
+                    Disk space and write access for every configured folder — checked live, not just
+                    whether the setting has a value. An unconfigured destination (e.g. no Export or
+                    Watchfolder set up) shows as such, not as an error.
+                </p>
+                <div id="storageStatusList">Loading…</div>
+            </div>
+        </details>
+        <details class="collapse-card" id="mamCard" ontoggle="if (this.open && !mamKeysLoaded) { loadMamKeys(); loadAgentConfig(); }">
+            <summary>
+                <span><i class="fa-solid fa-plug-circle-bolt"></i> External API (Remote Control)</span>
+                <i class="fa-solid fa-chevron-down chevron"></i>
+            </summary>
+            <div class="collapse-body">
+                <p class="settings-hint" style="margin-top: -4px;">Lets an external system (a media asset manager, another app, your own script) submit video for vigil to process — through the same pipeline as a live recording (codec handling, filmstrip, AI description, faces), with per-job topics instead of the global setting. See <code>REMOTE_API.md</code> for the full endpoint reference and example requests.</p>
+                <div style="display:flex; gap:10px; align-items:flex-end; margin-bottom:14px; flex-wrap:wrap;">
+                    <div class="settings-group" style="margin-bottom:0; flex:1; min-width:200px;">
+                        <label>New key label</label>
+                        <input type="text" id="newMamKeyLabel" placeholder="e.g. 'Synology Photos import'">
+                    </div>
+                    <button type="button" class="btn-select-all" onclick="createMamKey()"><i class="fa-solid fa-key"></i> Generate Key</button>
+                </div>
+                <div id="mamNewKeyBox" style="display:none; margin-bottom:14px; padding:12px; border:1px solid var(--warning); border-radius:var(--radius-sm); background:var(--card-bg-inset);">
+                    <p style="margin:0 0 8px; color:var(--warning); font-weight:600;">⚠️ Shown once — copy it now, it can't be retrieved again:</p>
+                    <code id="mamNewKeyValue" style="word-break:break-all; user-select:all;"></code>
+                </div>
+                <div id="mamKeysList">Loading…</div>
+
+                <hr style="border-color: var(--border); margin: 20px 0;">
+
+                <div style="font-weight:600; margin-bottom: 4px;">Agent Control</div>
+                <p class="settings-hint" style="margin-top: 0; margin-bottom: 12px;">Lets an agent (Hermes, OpenClaw, etc.) operate the pipeline directly through this same API instead of only submitting jobs — toggle cameras, tune settings, start/stop recording, search. See <code>AGENT_CONFIG.md</code>. Off by default.</p>
+
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:10px; border:1px solid var(--danger); border-radius:var(--radius-sm); margin-bottom:14px; background:var(--card-bg-inset);">
+                    <input type="checkbox" id="agentMasterSwitch" onchange="saveAgentConfig()" style="width:auto;">
+                    <span><strong style="color:var(--danger);">Enable agent control</strong> — master switch. Nothing below works while this is off, regardless of the individual toggles.</span>
+                </label>
+
+                <div id="agentCapabilitiesList">Loading…</div>
+            </div>
+        </details>
+
+        <details class="collapse-card" id="logCard" ontoggle="onLogToggle()">
+            <summary>
+                <span><i class="fa-solid fa-terminal"></i> Log</span>
+                <i class="fa-solid fa-chevron-down chevron"></i>
+            </summary>
+            <div class="collapse-body">
+                <p class="settings-hint" style="margin-top: -4px;">Last 100 lines from <code>logs/pipeline_runtime.log</code>, refreshed every 5s while open.</p>
+                <pre id="logView" class="log-view">Loading…</pre>
+            </div>
+        </details>
+    </div>
+
+    <script>
+        const CSRF_TOKEN = "{{ csrf_token }}";
+        const STREAM_OVERRIDES = {{ overrides | tojson }};
+        const SIZE_RULES = {
+            v10: ['n', 's', 'm', 'b', 'l', 'x'],
+            v12: ['n', 's', 'm', 'l', 'x'],
+            v26: ['n', 's', 'm', 'l', 'x']
+        };
+        let expanded = false;
+        let logInterval = null;
+        let mamKeysLoaded = false;
+        let _confirmResolve = null;
+
+        function addStreamRow() {
+            const container = document.getElementById('streamRows');
+            const div = document.createElement('div');
+            div.className = 'stream-row';
+            div.innerHTML = `
+                <input type="text" name="stream_name" placeholder="Name" required>
+                <input type="text" name="stream_url" placeholder="rtmp://, rtsp://, /dev/video0, or a YouTube/Twitch/Vimeo URL" required>
+                <input type="hidden" name="stream_enabled_flag" value="1">
+                <label class="stream-row-toggle">
+                    <input type="checkbox" checked onchange="this.parentElement.previousElementSibling.value = this.checked ? '1' : '0'">
+                    Video
+                </label>
+                <input type="hidden" name="stream_audio_enabled_flag" value="1">
+                <label class="stream-row-toggle">
+                    <input type="checkbox" checked onchange="this.parentElement.previousElementSibling.value = this.checked ? '1' : '0'">
+                    <i class="fa-solid fa-microphone"></i>
+                </label>
+                <button type="button" class="btn-delete" onclick="this.closest('.stream-row').remove()" title="Remove camera"><i class="fa-solid fa-trash-can"></i></button>
+            `;
+            container.appendChild(div);
+        }
+
+        function onModelPresetChange() {
+            const sel = document.getElementById('ollamaModelPreset');
+            const custom = document.getElementById('ollamaModelCustom');
+            if (sel.value === '__custom__') {
+                custom.style.display = 'block';
+                custom.name = 'OLLAMA_VISION_MODEL';
+                sel.removeAttribute('name');
+                custom.value = '';
+                custom.focus();
+            } else {
+                custom.style.display = 'none';
+                custom.removeAttribute('name');
+                sel.name = 'OLLAMA_VISION_MODEL';
+                custom.value = sel.value;
+            }
+        }
+
+        function filterModelSizes() {
+            const yoloSelect = document.querySelector('select[name="YOLO_VERSION"]');
+            const sizeSelect = document.querySelector('select[name="MODEL_SIZE"]');
+            if (!yoloSelect || !sizeSelect) return;
+            const allowed = SIZE_RULES[yoloSelect.value] || [];
+            const currentValue = sizeSelect.value;
+            Array.from(sizeSelect.options).forEach(opt => {
+                const ok = allowed.includes(opt.value);
+                opt.hidden = !ok;
+                opt.disabled = !ok;
+            });
+            if (!allowed.includes(currentValue)) {
+                sizeSelect.value = allowed.includes('x') ? 'x' : allowed[0];
+            }
+        }
+
+        function toggleCheckboxes() {
+            const checkboxes = document.getElementById("checkboxes");
+            expanded = !expanded;
+            checkboxes.style.display = expanded ? "block" : "none";
+        }
+
+        function updateCategorySummary() {
+            const checkedBoxes = document.querySelectorAll('#checkboxes input[type="checkbox"]:checked');
+            const summary = document.getElementById("category-summary");
+            if (checkedBoxes.length === 0) { summary.innerText = "No classes selected"; }
+            else if (checkedBoxes.length === 1) { summary.innerText = "1 class selected"; }
+            else { summary.innerText = checkedBoxes.length + " classes selected"; }
+        }
+
+        function loadStorageStatus() {
+            const el = document.getElementById('storageStatusList');
+            fetch('/api/storage_status').then(r => r.json()).then(data => {
+                el.innerHTML = (data.folders || []).map(f => {
+                    if (!f.configured) {
+                        return `<div class="storage-folder-row">
+                            <div class="storage-folder-label">${escapeHtml(f.label)}</div>
+                            <div class="storage-folder-detail" style="color:var(--text-muted);">Not configured.</div>
+                        </div>`;
+                    }
+                    if (f.remote) {
+                        return `<div class="storage-folder-row">
+                            <div class="storage-folder-label">${escapeHtml(f.label)}</div>
+                            <div class="storage-folder-detail"><code>${escapeHtml(f.path)}</code> — remote (rsync) destination, disk space can't be checked from here.</div>
+                        </div>`;
+                    }
+                    if (f.error) {
+                        return `<div class="storage-folder-row">
+                            <div class="storage-folder-label">${escapeHtml(f.label)}</div>
+                            <div class="storage-folder-detail" style="color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> <code>${escapeHtml(f.path)}</code> — ${escapeHtml(f.error)}</div>
+                        </div>`;
+                    }
+                    const pct = f.used_percent ?? 0;
+                    const barColor = pct >= 90 ? 'var(--danger)' : (pct >= 75 ? 'var(--warning)' : 'var(--primary)');
+                    const writableIcon = f.writable
+                        ? '<i class="fa-solid fa-circle-check" style="color:var(--success);" title="Writable"></i>'
+                        : '<i class="fa-solid fa-circle-xmark" style="color:var(--danger);" title="Not writable"></i>';
+                    return `<div class="storage-folder-row">
+                        <div class="storage-folder-label">${escapeHtml(f.label)} ${writableIcon}</div>
+                        <div class="storage-folder-detail"><code>${escapeHtml(f.path)}</code></div>
+                        <div class="status-progress-bar" style="margin-top:6px;">
+                            <div class="status-progress-fill" style="width:${pct}%; background:${barColor};"></div>
+                        </div>
+                        <div class="storage-folder-detail" style="margin-top:4px;">${pct}% used · ${_formatBytes(f.free_bytes)} free of ${_formatBytes(f.total_bytes)}</div>
+                    </div>`;
+                }).join('') || '<p class="settings-hint">No folders configured yet.</p>';
+            }).catch(() => { el.innerHTML = '<p class="settings-hint">Could not load storage status.</p>'; });
+        }
+
+        function _formatBytes(bytes) {
+            if (bytes == null) return '--';
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            let val = bytes, i = 0;
+            while (val >= 1024 && i < units.length - 1) { val /= 1024; i++; }
+            return `${val.toFixed(1)} ${units[i]}`;
+        }
+
+        function fetchLog() {
+            fetch('/api/log?lines=100')
+                .then(r => r.json())
+                .then(data => {
+                    const el = document.getElementById('logView');
+                    if (!el) return;
+                    el.textContent = data.error ? data.error : (data.lines || []).join('');
+                    el.scrollTop = el.scrollHeight;
+                })
+                .catch(() => {});
+        }
+
+        function onLogToggle() {
+            const card = document.getElementById('logCard');
+            if (card.open) {
+                fetchLog();
+                logInterval = setInterval(fetchLog, 5000);
+            } else if (logInterval) {
+                clearInterval(logInterval);
+                logInterval = null;
+            }
+        }
+
+        function loadMamKeys() {
+            mamKeysLoaded = true;
+            fetch('/api/mam_keys').then(r => r.json()).then(data => {
+                if (!data.available) {
+                    document.getElementById('mamKeysList').innerHTML = '<p class="settings-hint">External API module not available.</p>';
+                    return;
+                }
+                renderMamKeys(data.keys);
+            });
+        }
+
+        function renderMamKeys(keys) {
+            const el = document.getElementById('mamKeysList');
+            if (!keys.length) {
+                el.innerHTML = '<p class="settings-hint">No API keys yet — generate one above to start using the external API.</p>';
+                return;
+            }
+            el.innerHTML = keys.map(k => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border);">
+                    <span>${escapeHtml(k.label)}<span style="color:var(--text-muted); font-size:0.85rem;"> · created ${escapeHtml(_formatKeyDate(k.created_at))} · last used ${escapeHtml(_formatKeyDate(k.last_used_at))}</span></span>
+                    <button type="button" class="btn-select-all" style="color:var(--danger);" onclick="revokeMamKey('${k.key_hash}')"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `).join('');
+        }
+
+        function createMamKey() {
+            const label = document.getElementById('newMamKeyLabel').value.trim();
+            _postForm('/api/mam_keys', { label: label }).then(res => {
+                if (!res.ok) {
+                    showToast('⚠️ Could not create key: ' + (res.error || 'unknown error'), 6000);
+                    return;
+                }
+                document.getElementById('mamNewKeyValue').textContent = res.key;
+                document.getElementById('mamNewKeyBox').style.display = 'block';
+                document.getElementById('newMamKeyLabel').value = '';
+                loadMamKeys();
+            });
+        }
+
+        function revokeMamKey(keyHash) {
+            if (!confirm('Revoke this API key? Anything using it will stop working immediately.')) return;
+            _postForm(`/api/mam_keys/${keyHash}/revoke`, {}).then(res => {
+                if (res.ok) { loadMamKeys(); showToast('Key revoked.'); }
+                else showToast('⚠️ Could not revoke key.', 6000);
+            });
+        }
+
+        function _formatKeyDate(ts) {
+            return ts ? new Date(ts * 1000).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'never';
+        }
+
+        function loadAgentConfig() {
+            fetch('/api/agent_config').then(r => r.json()).then(data => {
+                if (!data.capabilities) {
+                    document.getElementById('agentCapabilitiesList').innerHTML = '<p class="settings-hint">Agent control module not available.</p>';
+                    return;
+                }
+                renderAgentCapabilities(data);
+            });
+        }
+
+        function saveAgentConfig() {
+            const body = { agent_control_enabled: document.getElementById('agentMasterSwitch').checked ? 'on' : '' };
+            document.querySelectorAll('#agentCapabilitiesList input[data-cap]').forEach(el => {
+                body['cap_' + el.dataset.cap] = el.checked ? 'on' : '';
+            });
+            _postForm('/api/agent_config', body).then(res => {
+                if (res.ok) showToast('Agent control settings saved.');
+                else showToast('⚠️ Could not save: ' + (res.error || 'unknown error'), 6000);
+                loadAgentConfig();
+            });
+        }
+
+        function renderAgentCapabilities(config) {
+            const capOrder = ['search', 'cameras_toggle', 'pipeline_control', 'manual_trigger', 'settings_change', 'delete', 'export'];
+            const labels = {
+                search: 'Search', cameras_toggle: 'Toggle cameras', pipeline_control: 'Start/stop pipeline',
+                manual_trigger: 'Manual trigger & notify-only mode',
+                settings_change: 'Change settings', delete: 'Delete recordings', export: 'Export recordings'
+            };
+            document.getElementById('agentMasterSwitch').checked = !!config.agent_control_enabled;
+            const notImplemented = new Set(['delete', 'export']);
+            document.getElementById('agentCapabilitiesList').innerHTML = capOrder.map(cap => {
+                const c = config.capabilities[cap] || {};
+                const disabled = notImplemented.has(cap);
+                return `
+                    <label style="display:flex; align-items:flex-start; gap:8px; cursor:${disabled ? 'default' : 'pointer'}; padding:8px 0; border-bottom:1px solid var(--border); opacity:${disabled ? '0.5' : '1'};">
+                        <input type="checkbox" data-cap="${cap}" ${c.enabled ? 'checked' : ''} ${disabled ? 'disabled' : 'onchange="saveAgentConfig()"'} style="width:auto; margin-top:3px;">
+                        <span>
+                            <strong>${labels[cap]}</strong>
+                            <span style="color:var(--text-muted); font-size:0.8rem;"> · risk: ${c.risk}${disabled ? ' · not implemented yet' : ''}</span>
+                            <br><span style="color:var(--text-muted); font-size:0.85rem;">${escapeHtml(c.description || '')}</span>
+                        </span>
+                    </label>
+                `;
+            }).join('');
+        }
+
+        function _postForm(url, fields) {
+            const body = new URLSearchParams();
+            body.append('csrf_token', CSRF_TOKEN);
+            for (const [key, val] of Object.entries(fields)) {
+                if (Array.isArray(val)) val.forEach(v => body.append(key, v));
+                else body.append(key, val);
+            }
+            return fetch(url, { method: 'POST', body }).then(r => r.json());
+        }
+
+        function showToast(msg, duration = 4000) {
+            let toast = document.getElementById('toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast';
+                toast.className = 'toast';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = msg;
+            void toast.offsetWidth;
+            toast.classList.add('show');
+            clearTimeout(toast._hideTimer);
+            toast._hideTimer = setTimeout(() => toast.classList.remove('show'), duration);
+        }
+
+        function escapeHtml(s) {
+            const d = document.createElement('div');
+            d.textContent = s == null ? '' : s;
+            return d.innerHTML;
+        }
+
+        function showConfirm(message, okLabel = 'Delete') {
+            return new Promise(resolve => {
+                _confirmResolve = resolve;
+                document.getElementById('confirmModalText').textContent = message;
+                document.getElementById('confirmModalOkBtn').textContent = okLabel;
+                document.getElementById('confirmModal').classList.add('active');
+            });
+        }
+
+        function _resolveConfirm(result) {
+            document.getElementById('confirmModal').classList.remove('active');
+            if (_confirmResolve) { _confirmResolve(result); _confirmResolve = null; }
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme === 'light' ? 'light' : 'dark');
+            // Die Hauptseite lebt in einem separaten Fenster (dieses Panel
+            // läuft in einem iframe) -- eigenes DOM, eigenes documentElement.
+            // Ohne diese Nachricht würde nur das iframe selbst das Theme
+            // wechseln, die Seite dahinter bliebe im alten Theme stehen.
+            window.parent.postMessage({ type: 'vigil:theme', theme: theme }, '*');
+        }
+
+        function handleSettingsSubmit(event) {
+            event.preventDefault();
+            const form = document.getElementById('settingsForm');
+            const formData = new FormData(form);
+            const btn = document.getElementById('applyBtn');
+            const btnText = document.getElementById('applyBtnText');
+            const btnIcon = btn ? btn.querySelector('i') : null;
+            if (btn) btn.disabled = true;
+            if (btnText) btnText.innerText = 'Applying…';
+            if (btnIcon) btnIcon.className = 'fa-solid fa-spinner fa-spin';
+
+            const resetButton = () => {
+                if (btn) btn.disabled = false;
+                if (btnText) btnText.innerText = 'Apply Settings';
+                if (btnIcon) btnIcon.className = 'fa-solid fa-arrows-rotate';
+            };
+
+            fetch('/save_settings', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(res => {
+                    resetButton();
+                    if (res.ok) {
+                        showToast(res.restarted ? 'Settings saved — pipeline restarting…' : 'Settings saved.');
+                        if (res.theme) applyTheme(res.theme);
+                        // Thumbnail-Rate betrifft das Live-Kamera-Grid auf der
+                        // Hauptseite -- das läuft hier im iframe nicht mit,
+                        // muss also per postMessage an die Elternseite
+                        // weitergereicht werden, damit es sofort greift statt
+                        // erst beim nächsten Neuladen.
+                        const newRate = formData.get('THUMBNAIL_FPS');
+                        if (newRate) {
+                            window.parent.postMessage({ type: 'vigil:thumbnailFps', fps: parseFloat(newRate) }, '*');
+                        }
+                        window.parent.postMessage({ type: 'vigil:settingsSaved' }, '*');
+                    } else {
+                        showToast('⚠️ Failed to save settings.', 6000);
+                    }
+                })
+                .catch(() => {
+                    resetButton();
+                    showToast('⚠️ Failed to save settings.', 6000);
+                });
+        }
+
+        function updateHardwareStatus() {
+            // Bewusst eine eigene, schlankere Version statt der alten
+            // updateSystemStatus() aus dashboard.html -- die kümmerte sich
+            // zusätzlich um Dinge, die nur auf der Hauptseite Sinn ergeben
+            // (Recent/Archived-Listen, REC-Badges, Tab-Titel). Hier geht's
+            // nur um die reinen Hardware-/Modell-/Prozess-Werte, die jetzt
+            // in dieses Panel gehören.
+            fetch('/api/status')
+                .then(res => res.json())
+                .then(data => {
+                    if (!data) return;
+                    if (data.active_model) {
+                        document.getElementById('stat-active-model').innerText = data.active_model;
+                    }
+                    if (data.model_filename) {
+                        document.getElementById('stat-model-file').innerText = data.model_filename;
+                    }
+                    if (data.cpu) {
+                        document.getElementById('stat-cpu-text').innerText = data.cpu.percent + '%';
+                        document.getElementById('stat-cpu-val').innerText = (data.cpu.temp || '--') + '°C';
+                        const cpuBar = document.getElementById('stat-cpu-bar');
+                        cpuBar.style.width = data.cpu.percent + '%';
+                        cpuBar.className = 'status-progress-fill ' + (data.cpu.percent > 85 ? 'danger' : data.cpu.percent > 65 ? 'warning' : '');
+                    }
+                    if (data.ram) {
+                        document.getElementById('stat-ram-text').innerText = data.ram.percent + '%';
+                        document.getElementById('stat-ram-val').innerText = data.ram.used + ' GB';
+                        document.getElementById('stat-ram-sub').innerText = 'of ' + data.ram.total + ' GB total';
+                        const ramBar = document.getElementById('stat-ram-bar');
+                        ramBar.style.width = data.ram.percent + '%';
+                        ramBar.className = 'status-progress-fill ' + (data.ram.percent > 85 ? 'danger' : data.ram.percent > 65 ? 'warning' : '');
+                    }
+                    if (data.vram) {
+                        document.getElementById('stat-vram-text').innerText = data.vram.percent + '%';
+                        document.getElementById('stat-vram-val').innerText = data.vram.used + ' GB';
+                        document.getElementById('stat-vram-sub').innerText = 'of ' + data.vram.total + ' GB total';
+                        const vramBar = document.getElementById('stat-vram-bar');
+                        vramBar.style.width = data.vram.percent + '%';
+                        vramBar.className = 'status-progress-fill ' + (data.vram.percent > 85 ? 'danger' : data.vram.percent > 65 ? 'warning' : '');
+                    }
+                    if (data.gpu) {
+                        document.getElementById('stat-temp-val').innerText = data.gpu.temp + '°C';
+                        document.getElementById('stat-temp-status').innerText = data.gpu.status || 'Normal';
+                        const tempBar = document.getElementById('stat-temp-bar');
+                        let tempPercent = Math.min(100, (data.gpu.temp / 90) * 100);
+                        tempBar.style.width = tempPercent + '%';
+                        tempBar.className = 'status-progress-fill ' + (data.gpu.temp > 80 ? 'danger' : data.gpu.temp > 70 ? 'warning' : '');
+                        document.getElementById('stat-nvenc-val').innerText = (data.gpu.encoder_util || 0) + '%';
+                        document.getElementById('stat-nvenc-bar').style.width = (data.gpu.encoder_util || 0) + '%';
+                        document.getElementById('stat-nvdec-val').innerText = (data.gpu.decoder_util || 0) + '%';
+                        document.getElementById('stat-nvdec-bar').style.width = (data.gpu.decoder_util || 0) + '%';
+                    }
+                    if (data.disk) {
+                        document.getElementById('stat-disk-text').innerText = data.disk.percent + '%';
+                        document.getElementById('stat-disk-val').innerText = data.disk.free + ' GB free';
+                        document.getElementById('stat-disk-sub').innerText = 'of ' + data.disk.total + ' GB';
+                        const diskBar = document.getElementById('stat-disk-bar');
+                        diskBar.style.width = data.disk.percent + '%';
+                        diskBar.className = 'status-progress-fill ' + (data.disk.percent > 90 ? 'danger' : data.disk.percent > 75 ? 'warning' : '');
+                    }
+                    if (data.processes) {
+                        const tbody = document.getElementById('processes-tbody');
+                        if (tbody) {
+                            if (data.processes.length === 0) {
+                                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No active pipeline processes found.</td></tr>';
+                            } else {
+                                let rowsHtml = '';
+                                data.processes.forEach(proc => {
+                                    rowsHtml += `<tr>
+                                        <td>${proc.name}</td>
+                                        <td>${proc.pid}</td>
+                                        <td><span class="badge-running">${proc.status}</span></td>
+                                        <td>${proc.cpu}</td>
+                                        <td>${proc.ram}</td>
+                                    </tr>`;
+                                });
+                                tbody.innerHTML = rowsHtml;
+                            }
+                        }
+                    }
+                    if (data.ollama_status) {
+                        const badge = document.getElementById('ollamaStatus');
+                        if (badge) {
+                            const labels = {ok: 'Ollama reachable', error: 'Ollama unreachable', disabled: 'Ollama check disabled'};
+                            badge.className = 'ollama-status-badge ' + (data.ollama_status === 'ok' ? 'ok' : data.ollama_status === 'error' ? 'error' : '');
+                            badge.innerHTML = '<span class="rec-dot"></span>' + (labels[data.ollama_status] || data.ollama_status);
+                        }
+                    }
+                })
+                .catch(err => console.error('Hardware status fetch failed:', err));
+        }
+        setInterval(updateHardwareStatus, 3000);
+        updateHardwareStatus();
+
+        function handleStreamsSubmit(event) {
+            event.preventDefault();
+            const form = document.getElementById('streamsForm');
+            const formData = new FormData(form);
+            const btn = form.querySelector('button[type="submit"]');
+            if (btn) btn.disabled = true;
+            fetch('/save_streams', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(res => {
+                    if (btn) btn.disabled = false;
+                    if (res.ok) {
+                        showToast(res.restarted ? 'Cameras saved — pipeline restarting…' : 'Cameras saved.');
+                        // renderStreamsGrid() aktualisiert das Live-Grid auf
+                        // der Hauptseite -- die läuft hier im iframe nicht
+                        // mit, daher per postMessage an die Elternseite
+                        // weiterreichen statt lokal aufzurufen.
+                        window.parent.postMessage({ type: 'vigil:streamsUpdated', streams: res.streams || [] }, '*');
+                    } else {
+                        showToast('⚠️ ' + (res.error || 'Failed to save cameras.'), 6000);
+                    }
+                })
+                .catch(() => {
+                    if (btn) btn.disabled = false;
+                    showToast('⚠️ Failed to save cameras.', 6000);
+                });
+        }
+
+        document.querySelector('select[name="YOLO_VERSION"]').addEventListener('change', filterModelSizes);
+        filterModelSizes();
+        updateCategorySummary();
+        document.addEventListener('click', function(event) {
+            const multiselect = document.querySelector('.multiselect');
+            if (expanded && multiselect && !multiselect.contains(event.target)) {
+                document.getElementById("checkboxes").style.display = "none";
+                expanded = false;
+            }
+        });
+        document.addEventListener('keydown', function(e) {
+            const confirmModal = document.getElementById('confirmModal');
+            if (confirmModal.classList.contains('active')) {
+                if (e.key === "Enter") { e.preventDefault(); _resolveConfirm(true); }
+                if (e.key === "Escape") { e.preventDefault(); _resolveConfirm(false); }
+            }
+        });
+    </script>
+</body>
+</html>

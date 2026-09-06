@@ -781,6 +781,28 @@ def dashboard():
         thumbnail_interval_ms=thumbnail_interval_ms
     )
 
+@app.route('/config')
+@requires_auth
+def config_panel():
+    """Cameras, System Settings, Hardware & System Status, Storage, External
+    API, and Log -- ausgelagert in eine eigene Seite, im Dashboard per
+    iframe in einer Lightbox eingebettet (Zahnrad-Icon neben Start/Stop).
+    Hält dashboard.html deutlich kleiner und beide Seiten unabhängig
+    pflegbar. Dieselbe Datenbasis wie die Haupt-Route, nur ohne die
+    dashboard-spezifischen Felder (recent/archived events etc.), die hier
+    ungenutzt blieben."""
+    overrides = load_overrides()
+    settings = load_settings()
+    streams_full = _load_streams_display()
+    return render_template(
+        'config.html',
+        streams_full=streams_full,
+        overrides=overrides,
+        settings=settings,
+        available_classes=AVAILABLE_CLASSES,
+        csrf_token=CSRF_TOKEN,
+    )
+
 def _trigger_analysis(base_dir, filename):
     settings = load_settings()
     ai_enabled = settings.get('AI_ANALYSIS_ENABLED')
