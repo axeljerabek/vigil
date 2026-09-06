@@ -3429,6 +3429,37 @@
         }
 
         function openLightbox(filename, archived) {
+            currentLightboxFilename = filename;
+            currentLightboxArchived = archived;
+            const ev = eventDataMap[filename];
+
+            if (ev && ev.is_recording) {
+                // Aktiv laufende Aufnahme: KEIN Player-Request auslösen. Ein
+                // ffmpeg-Remux über eine noch wachsende Datei liest bis zum
+                // aktuellen Dateiende, hält das für EOF und hört dort auf --
+                // sichtbar als "bleibt bei X:XX stehen", obwohl die Aufnahme
+                // im Hintergrund weiterläuft. Stattdessen ehrlich sagen, dass
+                // sie noch läuft, statt einen kaputten Stream zu zeigen.
+                loader.style.display = 'none';
+                videoSource.src = '';
+                videoPlayer.load();
+                statusText.innerText = '⏺ Still recording — playback will work once it finishes. This view won\'t auto-refresh; close and reopen once it\'s done.';
+                downloadLink.href = '#';
+                downloadLink.removeAttribute('download');
+                document.getElementById('lightboxNoteText').value = ev.user_note || '';
+                document.getElementById('lightboxNoteStatus').textContent = '';
+                renderLightboxStars(ev.rating || 0);
+                document.getElementById('lightboxAiDesc').style.display = 'none';
+                renderLightboxMetadata(ev);
+                document.getElementById('lightboxArchiveBtnTop').style.display = 'none';
+                document.getElementById('lightboxExportBtnTop').style.display = 'none';
+                document.getElementById('lightboxDeleteBtnTop').innerHTML = '<i class="fa-solid fa-trash-can"></i> Delete';
+                setSpeed(1.0, document.getElementById('defaultSpeedBtn'));
+                updateLightboxNavButtons();
+                lightbox.classList.add('active');
+                return;
+            }
+
             loader.style.display = 'block';
             statusText.innerText = 'Loading & transcoding video...';
             const src = (archived ? '/video/archive/' : '/video/') + filename;
@@ -3436,10 +3467,7 @@
             videoPlayer.load();
             downloadLink.href = src;
             downloadLink.setAttribute('download', filename);
-            currentLightboxFilename = filename;
-            currentLightboxArchived = archived;
 
-            const ev = eventDataMap[filename];
             const descBox = document.getElementById('lightboxAiDesc');
             document.getElementById('lightboxNoteText').value = (ev && ev.user_note) ? ev.user_note : '';
             document.getElementById('lightboxNoteStatus').textContent = '';

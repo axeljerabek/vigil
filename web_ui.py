@@ -2181,6 +2181,14 @@ def serve_annot_video(filename):
     input_file = os.path.join(ALERTS_DIR, filename)
     if not os.path.exists(input_file):
         return f"File not found: {filename}", 404
+    if os.path.exists(os.path.splitext(input_file)[0] + '.recording'):
+        # Aktiv laufende Aufnahme: KEIN Remux-Versuch. ffmpeg würde bis zum
+        # aktuellen Dateiende lesen, das für EOF halten und dort aufhören --
+        # sichtbar als Wiedergabe, die mitten im Video hängen bleibt, obwohl
+        # im Hintergrund weiter aufgenommen wird. Das Dashboard fängt diesen
+        # Fall selbst schon ab (öffnet den Player gar nicht erst), das hier
+        # ist nur die serverseitige Absicherung für einen direkten Aufruf.
+        return "This recording is still in progress. Try again once it finishes.", 425
     if _is_finished_video(input_file):
         return send_file(input_file, mimetype='video/mp4', conditional=True)
     return _transcode_stream(input_file)
