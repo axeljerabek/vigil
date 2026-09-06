@@ -1,6 +1,6 @@
-# Installation Guide: IDguard PRO
+# Installation Guide: vigil
 
-This document describes the process of installing `IDguard PRO` on a new Linux system (optimized for NVIDIA GPU setups).
+This document describes the process of installing `vigil` on a new Linux system (optimized for NVIDIA GPU setups).
 
 > **Looking for the fastest path instead?** See [DOCKER.md](./DOCKER.md) for a Docker-based install — no venv, no manual Python/CUDA setup, just Docker + the NVIDIA Container Toolkit. The steps below are for a bare-metal install (venv, `init_venv.sh`, system packages) — pick one or the other, not both.
 
@@ -22,8 +22,8 @@ Before proceeding with the Python installation, your system must provide the nec
 
 Clone the repository onto your target machine:
 ```bash
-git clone https://github.com/axeljerabek/IDguard_PRO
-cd IDguard_PRO
+git clone https://github.com/axeljerabek/vigil
+cd vigil
 ```
 
 ## 3. Setup Virtual Environment (Python venv)
@@ -59,7 +59,7 @@ If you want the optional "describe what happened in this recording" feature, you
 ```bash
 docker exec -it <container-name> ollama pull llava:latest
 ```
-This is entirely optional — IDguard PRO records and detects normally with no Ollama installed at all. Everything related to this (enable/disable, endpoint URL, which model) is configured later, live, in the dashboard under Settings → KI-Videoanalyse.
+This is entirely optional — vigil records and detects normally with no Ollama installed at all. Everything related to this (enable/disable, endpoint URL, which model) is configured later, live, in the dashboard under Settings → KI-Videoanalyse.
 
 ### Optional: Audio Trigger and Semantic Search (no extra install step)
 
@@ -94,7 +94,7 @@ Just make sure the project directory permissions allow writing to `alerts/` and 
 
 ## 6. Starting the System
 
-IDguard PRO is two separate processes: the **recording pipeline** (`recorder_pipeline.py`, one worker per camera) and the **web dashboard** (`web_ui.py`). The dashboard's Start/Stop button controls the pipeline process; the dashboard itself needs to be started separately.
+vigil is two separate processes: the **recording pipeline** (`recorder_pipeline.py`, one worker per camera) and the **web dashboard** (`web_ui.py`). The dashboard's Start/Stop button controls the pipeline process; the dashboard itself needs to be started separately.
 
 **Start the web dashboard:**
 ```bash

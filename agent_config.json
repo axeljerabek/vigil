@@ -1,43 +1,12 @@
 {
-  "_comment": "Controls what an external agent (Hermes, OpenClaw, or any other API client using an agent-labeled key) is allowed to do via /api/v1/agent/*. Master switch below must be true AND the specific capability must be true for a call to succeed. Nothing here affects the plain job-submission API (/api/v1/jobs) -- that has always been available to any valid API key.",
-
-  "agent_control_enabled": false,
-
+  "agent_control_enabled": true,
   "capabilities": {
-    "search": {
-      "enabled": true,
-      "risk": "low",
-      "description": "Search recordings by description, topic, transcript, or person name. Read-only."
-    },
-    "cameras_toggle": {
-      "enabled": true,
-      "risk": "low",
-      "description": "Enable or disable individual cameras. Does not change URLs or credentials."
-    },
-    "pipeline_control": {
-      "enabled": true,
-      "risk": "medium",
-      "description": "Start or stop the entire recording pipeline. Stopping it means no camera records until it's started again."
-    },
-    "manual_trigger": {
-      "enabled": false,
-      "risk": "medium",
-      "description": "Force-start a recording on a specific camera right now, and switch a camera between normal (auto-record) and notify-only (YOLO still detects, but only reports -- recording waits for an explicit trigger) mode. Creates real recordings and uses storage; off by default even though the other low-risk capabilities default on."
-    },
-    "settings_change": {
-      "enabled": true,
-      "risk": "medium",
-      "description": "Change detection/analysis tuning settings (confidence threshold, FPS, pre/post-roll, AI topics, thresholds). Restricted to a fixed allowlist of keys -- credentials, URLs, and export destinations can never be changed through this capability, regardless of this setting."
-    },
-    "delete": {
-      "enabled": false,
-      "risk": "high",
-      "description": "NOT IMPLEMENTED YET. Would permanently delete recordings. Irreversible. Placeholder only -- no route exists for this capability."
-    },
-    "export": {
-      "enabled": false,
-      "risk": "medium",
-      "description": "NOT IMPLEMENTED YET. Would trigger export of recordings to the configured destination. Placeholder only -- no route exists for this capability."
-    }
+    "search": { "enabled": true },
+    "cameras_toggle": { "enabled": true },
+    "pipeline_control": { "enabled": true },
+    "manual_trigger": { "enabled": true },
+    "settings_change": { "enabled": true },
+    "delete": { "enabled": false },
+    "export": { "enabled": false }
   }
 }
