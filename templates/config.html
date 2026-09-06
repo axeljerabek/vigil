@@ -387,6 +387,34 @@
                     </div>
 
                     <div class="settings-section">
+                        <div class="settings-section-label"><i class="fa-solid fa-font"></i> Text Recognition (OCR, optional)</div>
+                        <p class="settings-hint" style="margin-top: -4px; margin-bottom: 12px;">
+                            Reads any visible text in a recording — house numbers, package labels, street
+                            signs, license plates, anything — via <a href="https://github.com/JaidedAI/EasyOCR" target="_blank" rel="noopener">EasyOCR</a>
+                            on a sample of filmstrip frames. Recognized text becomes searchable (including
+                            via "Ask vaelen") the same way descriptions and transcripts are.
+                        </p>
+                        <div class="settings-group" style="margin-bottom: 14px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="OCR_ENABLED" {% if settings.get('OCR_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Enable text recognition
+                            </label>
+                        </div>
+                        <div class="settings-group" style="margin-bottom: 4px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="checkbox" name="PLATE_RECOGNITION_ENABLED" {% if settings.get('PLATE_RECOGNITION_ENABLED') %}checked{% endif %} style="width:auto;">
+                                Also match license plates against named vehicles
+                            </label>
+                            <p class="settings-hint" style="margin-top:4px;">
+                                A refinement on top of the text above, not a separate scan: text found
+                                overlapping a detected vehicle is checked against a plate-like pattern and
+                                matched to named vehicles, the same "identity survives forever" model as
+                                named people. Needs text recognition enabled above to do anything.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
                         <div class="settings-section-label"><i class="fa-solid fa-hard-drive"></i> Storage</div>
                         <p class="settings-hint" style="margin-top: -4px; margin-bottom: 12px;">
                             Where recordings actually live. By default, everything is stored inside the

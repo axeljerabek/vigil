@@ -41,6 +41,7 @@ sys.path.append(DIR)
 import ai_analyze
 import transcribe_audio
 import face_recognize
+import text_recognize
 try:
     import mqtt_client
 except ImportError:
@@ -115,6 +116,7 @@ if __name__ == "__main__":
             ai_analyze.analyze(video_basename, base_dir)
             transcribe_audio.transcribe(video_basename, base_dir)
             face_recognize.recognize(video_basename, base_dir)
+            text_recognize.recognize(video_basename, base_dir)
         finally:
             signal.alarm(0)  # Watchdog deaktivieren, egal ob normal fertig oder ausgelöst
     except PostprocessTimeout:

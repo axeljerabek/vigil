@@ -1979,6 +1979,8 @@ def save_pipeline_settings():
         "WHISPER_MODEL_SIZE": request.form.get('WHISPER_MODEL_SIZE', 'small') if request.form.get('WHISPER_MODEL_SIZE') in ('tiny', 'base', 'small', 'medium', 'large-v3') else 'small',
         "TRANSCRIPTION_LANGUAGE": request.form.get('TRANSCRIPTION_LANGUAGE', '').strip(),
         "FACE_RECOGNITION_ENABLED": request.form.get('FACE_RECOGNITION_ENABLED') == 'on',
+        "OCR_ENABLED": request.form.get('OCR_ENABLED') == 'on',
+        "PLATE_RECOGNITION_ENABLED": request.form.get('PLATE_RECOGNITION_ENABLED') == 'on',
         "FACE_MODEL_PACK": request.form.get('FACE_MODEL_PACK', 'buffalo_s') if request.form.get('FACE_MODEL_PACK') in ('buffalo_s', 'buffalo_m', 'buffalo_l', 'antelopev2') else 'buffalo_s',
         "FACE_MIN_CONFIDENCE": round(_clamp(face_min_confidence, 0.1, 0.95), 2),
         "FACE_KNOWN_PERSON_THRESHOLD": round(_clamp(face_known_threshold, 0.1, 0.95), 2),
