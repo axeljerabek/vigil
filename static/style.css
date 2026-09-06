@@ -1,43 +1,77 @@
 /* === Fonts === */
-/* IBM Plex: für Sans + Mono aus einer Familie, technisch-präzise, wirkt wie
-   für Diagnose-/Kontrollpanels gemacht statt wie eine generische UI-Font. */
+/* Plus Jakarta Sans für die "Nebula"-Optik -- IBM Plex Mono bleibt für
+   wirklich technische/tabellarische Stellen (Log, Zahlen), damit diese
+   Bereiche weiterhin wie ein Kontrollpanel wirken statt wie generischer
+   Fließtext. */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;400;600;700;800&display=swap');
 
 :root {
-    /* Basis: warmes Anthrazit-Indigo statt reinem Blau-Schwarz */
-    --bg: #14131b;
-    --bg-wash: radial-gradient(ellipse 900px 500px at 50% -10%, rgba(232, 163, 61, 0.06), transparent 60%);
-    --card-bg: #1c1b26;
-    --card-bg-inset: #15141d;
-    --text: #f3efe6;
-    --text-muted: #948d84;
-    --text-dim: #625d57;
+    /* Nebula Dark: fast schwarz, mit sanftem Glow im Hintergrund statt
+       hartem Blau-Schwarz -- siehe #dynamic-bg für den eigentlichen Glow. */
+    --bg: #050608;
+    --bg-wash: radial-gradient(ellipse 900px 500px at 50% -10%, rgba(0, 242, 255, 0.05), transparent 60%);
+    --card-bg: rgba(255, 255, 255, 0.035);
+    --card-bg-inset: rgba(255, 255, 255, 0.02);
+    --text: rgba(255, 255, 255, 0.94);
+    --text-muted: rgba(255, 255, 255, 0.46);
+    --text-dim: rgba(255, 255, 255, 0.24);
 
-    /* Amber als Hauptakzent (Rack-LED / Kontrolllampe), Grün/Rot rein semantisch */
-    --primary: #e8a33d;
-    --primary-hover: #f2b558;
-    --primary-soft: rgba(232, 163, 61, 0.12);
+    /* Cyan als Hauptakzent statt Amber, Grün/Rot bleiben rein semantisch */
+    --primary: #00d9e8;
+    --primary-hover: #33e5f2;
+    --primary-soft: rgba(0, 217, 232, 0.13);
     --success: #3ecf8e;
     --success-soft: rgba(62, 207, 142, 0.14);
     --danger: #f2545b;
     --danger-soft: rgba(242, 84, 91, 0.14);
     --warning: #f2b558;
 
-    --border: #322f3d;
-    --radius-lg: 12px;
-    --radius-md: 8px;
-    --radius-sm: 5px;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-hi: rgba(255, 255, 255, 0.18);
+    --radius-lg: 20px;
+    --radius-md: 14px;
+    --radius-sm: 10px;
+    --radius-pill: 999px;
     --gap: clamp(10px, 1.8vw, 18px);
+    --blur-card: blur(28px);
+    --trans: 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 
-    /* Bisher hart codierte Einzelwerte (kein Theme-Wechsel möglich) — jetzt
-       als eigene Variablen, damit der Light-Override-Block direkt darunter
-       sie mit übernehmen kann, ohne die ganzen Regeln zu duplizieren. */
-    --text-on-primary: #241804;   /* Text auf Amber-Hintergrund — bleibt in beiden Themes gleich */
-    --switch-thumb-off: #f3efe6;  /* Schalter-Kreis im "Aus"-Zustand */
-    --switch-thumb-on: #0e1a14;   /* Schalter-Kreis im "An"-Zustand */
-    --input-hover-border: #454051; /* Rahmenfarbe bei Hover auf Formularfeldern */
+    --text-on-primary: #032b30;   /* Text auf Cyan-Hintergrund — bleibt in beiden Themes gleich */
+    --switch-thumb-off: #f3efe6;
+    --switch-thumb-on: #032b30;
+    --input-hover-border: rgba(255, 255, 255, 0.22);
 
-    --font-sans: 'IBM Plex Sans', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --font-mono: 'IBM Plex Mono', ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+/* Sanfter Radial-Glow hinter allem -- fixiert, damit er beim Scrollen nicht
+   mitwandert. Braucht ein <div id="dynamic-bg"> gleich zu Beginn von <body>;
+   ohne dieses Element bleibt der Effekt einfach aus, nichts bricht. */
+#dynamic-bg {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+        radial-gradient(circle at 20% 10%, rgba(0, 60, 70, 0.35) 0%, transparent 55%),
+        radial-gradient(circle at 85% 90%, rgba(10, 20, 40, 0.4) 0%, transparent 50%),
+        var(--bg);
+    transition: opacity 0.5s ease;
+}
+[data-theme="light"] #dynamic-bg {
+    background:
+        radial-gradient(circle at 20% 10%, rgba(0, 190, 210, 0.10) 0%, transparent 55%),
+        radial-gradient(circle at 85% 90%, rgba(0, 120, 180, 0.08) 0%, transparent 50%),
+        var(--bg);
+}
+
+/* Glas-Optik für die wichtigsten Kachel-/Karten-Klassen -- eine gemeinsame
+   Regel statt jede der vielen Kartenklassen einzeln umzuschreiben, da fast
+   alle ohnehin schon dieselben --card-bg/--border-Variablen nutzen. */
+.collapse-card, .lightbox-content, .settings-section, .status-metric-box,
+.storage-folder-row, .event-item, .ask-vigil-box, .ask-vigil-answer,
+.ask-vigil-source, .watchfolder-live-badge, .stream-tile, .people-grid .person-card,
+.cluster-card {
+    backdrop-filter: var(--blur-card);
+    -webkit-backdrop-filter: var(--blur-card);
 }
 
 /* Light-Theme: nur die Variablen, die sich unterscheiden — der Rest des
@@ -46,25 +80,27 @@
    über var(--xxx) läuft. Umschalten passiert über ein data-theme-Attribut
    auf <html>, kein zweites Stylesheet mehr nötig. */
 [data-theme="light"] {
-    --bg: #eceae5;
-    --bg-wash: radial-gradient(ellipse 900px 500px at 50% -10%, rgba(193, 125, 31, 0.06), transparent 60%);
-    --card-bg: #ffffff;
-    --card-bg-inset: #f2f0ea;
-    --text: #26241f;
-    --text-muted: #766f61;
-    --text-dim: #a39c8c;
-    --primary: #c17d1f;
-    --primary-hover: #a86a15;
-    --primary-soft: rgba(193, 125, 31, 0.12);
+    --bg: #f0f4f8;
+    --bg-wash: radial-gradient(ellipse 900px 500px at 50% -10%, rgba(0, 150, 180, 0.05), transparent 60%);
+    --card-bg: rgba(255, 255, 255, 0.72);
+    --card-bg-inset: rgba(0, 0, 0, 0.03);
+    --text: rgba(10, 20, 40, 0.92);
+    --text-muted: rgba(10, 20, 40, 0.48);
+    --text-dim: rgba(10, 20, 40, 0.28);
+    --primary: #0086a3;
+    --primary-hover: #00a3c4;
+    --primary-soft: rgba(0, 134, 163, 0.10);
     --success: #1e9e63;
     --success-soft: rgba(30, 158, 99, 0.12);
     --danger: #d1424a;
     --danger-soft: rgba(209, 66, 74, 0.1);
     --warning: #c17d1f;
-    --border: #ddd8cd;
+    --border: rgba(0, 0, 0, 0.09);
+    --border-hi: rgba(0, 0, 0, 0.18);
     --switch-thumb-off: #ffffff;
     --switch-thumb-on: #ffffff;
-    --input-hover-border: #c9c2b4;
+    --input-hover-border: rgba(0, 0, 0, 0.25);
+    --text-on-primary: #ffffff;
 }
 
 * {
@@ -101,13 +137,19 @@ body {
 
 h1 {
     font-size: clamp(1.5rem, 4vw, 1.95rem);
-    font-weight: 600;
+    font-weight: 500;
     letter-spacing: -0.01em;
     margin-bottom: var(--gap);
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 12px;
+}
+.vigil-logo-icon {
+    height: 1.4em;
+    width: auto;
+    border-radius: 6px;
+    flex-shrink: 0;
 }
 h1 i { color: var(--primary); }
 
@@ -197,11 +239,11 @@ button {
     border: none;
     border-radius: var(--radius-sm);
     font-family: var(--font-sans);
-    font-weight: 600;
+    font-weight: 500;
     font-size: 0.95rem;
     padding: 11px 18px;
     min-height: 46px;
-    transition: background 0.15s, transform 0.1s;
+    transition: background var(--trans), transform 0.1s, border-color var(--trans);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -299,7 +341,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     align-items: center;
     justify-content: space-between;
     padding: 16px 20px;
-    font-weight: 600;
+    font-weight: 500;
     font-size: 1.05rem;
     color: var(--text);
     user-select: none;

@@ -14,8 +14,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <div id="dynamic-bg"></div>
     <div class="container">
-        <h1><i class="fa-solid fa-shield-halved"></i> vigil Dashboard</h1>
+        <h1><img src="{{ url_for('static', filename='vigil-icon.svg') }}" alt="" class="vigil-logo-icon"> vigil Dashboard</h1>
 
         <!-- Schmale Pipeline-Control-Leiste: dezente Buttons, keine "Helden" -->
         <div class="pipeline-bar">
@@ -960,8 +961,7 @@
                     });
                     renderPeopleGrid();
                     renderClustersGrid();
-                    const personSel = document.getElementById('filterPerson');
-                    if (personSel) {
+                    document.querySelectorAll('.filter-person').forEach(personSel => {
                         const previousValue = personSel.value;
                         personSel.innerHTML = '<option value="">All people</option>';
                         currentPeople.forEach(p => {
@@ -970,7 +970,7 @@
                             personSel.appendChild(opt);
                         });
                         personSel.value = previousValue;
-                    }
+                    });
                 })
                 .catch(() => {
                     document.getElementById('peopleGrid').innerHTML = '<p class="settings-hint">Failed to load.</p>';
