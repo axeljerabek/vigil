@@ -62,6 +62,11 @@ LIVE_FIFO_DIR_NAME = ".watchfolder_fifos"
 # echte Live-Quelle zeitweise stocken kann, ohne dass die Aufnahme wirklich
 # vorbei ist.
 LIVE_SOURCE_IDLE_TIMEOUT_SEC = 60
+# Wie lange eine neu entdeckte Datei wiederholt auf Streamability geprüft
+# wird, bevor bei weiterhin unklarem Ergebnis auf Modus 2 zurückgefallen
+# wird -- reichlich Zeit für einen langsamen Schreiber, moov (falls
+# fast-start) zu schreiben, aber nicht endlos abwarten.
+PROBE_TIMEOUT_SEC = 15
 
 
 def _load_settings():
@@ -370,6 +375,7 @@ class WatchFolderAgent(multiprocessing.Process):
         model = None
         seen = {}  # path -> (size, last_change_ts) -- Modus 2 (warten bis fertig)
         live_sources = {}  # path -> Dict von _start_live_source() -- Modus 1 (live lesen)
+        pending_probe = {}  # path -> first_seen_ts -- noch keine endgültige Streamability-Antwort
 
         try:
             while not self._stop_event.is_set():
@@ -422,27 +428,81 @@ class WatchFolderAgent(multiprocessing.Process):
                         _stop_live_source(entry)
                         live_sources.pop(path, None)
 
+                # Dateien, deren Streamability beim letzten Versuch noch
+                # UNKNOWN war (z.B. gerade erst angelegt, noch kein moov
+                # geschrieben), erneut prüfen -- sonst würde eine Datei, die
+                # zufällig im allerersten Sichtungsmoment noch zu wenig
+                # Daten enthielt, für immer fälschlich in Modus 2 landen,
+                # obwohl Sekunden später genug geschrieben wäre, um sie
+                # korrekt als streambar zu erkennen.
+                for path in list(pending_probe.keys()):
+                    if path not in current_files:
+                        pending_probe.pop(path, None)
+                        continue
+                    probe_result = mp4_probe.probe_mp4_streamability(path)
+                    if probe_result == mp4_probe.STREAMABLE:
+                        live_entry = _start_live_source(path, source_name)
+                        pending_probe.pop(path, None)
+                        if live_entry is not None:
+                            live_sources[path] = live_entry
+                        else:
+                            try:
+                                seen[path] = (os.path.getsize(path), now)
+                            except OSError:
+                                pass
+                    elif probe_result == mp4_probe.NOT_STREAMABLE:
+                        # Endgültige Antwort: definitiv kein moov-first --
+                        # sofort in Modus 2 übernehmen, nicht weiter abwarten.
+                        pending_probe.pop(path, None)
+                        try:
+                            seen[path] = (os.path.getsize(path), now)
+                        except OSError:
+                            pass
+                    elif now - pending_probe[path] >= PROBE_TIMEOUT_SEC:
+                        # Immer noch unklar nach reichlich Wartezeit -- eher
+                        # eine sehr langsam schreibende oder ungewöhnliche
+                        # Quelle als ein Formatproblem; nicht ewig weiter
+                        # abfragen, lieber auf Modus 2 zurückfallen.
+                        print(f"🎬 [Watchfolder] '{path}' nach {PROBE_TIMEOUT_SEC}s immer noch nicht eindeutig einzuordnen -- falle auf Modus 2 zurück.")
+                        pending_probe.pop(path, None)
+                        try:
+                            seen[path] = (os.path.getsize(path), now)
+                        except OSError:
+                            pass
+
                 for path in current_files:
-                    if path in live_sources:
-                        continue  # wird oben bereits als Live-Quelle behandelt
+                    if path in live_sources or path in pending_probe:
+                        continue  # werden oben bereits behandelt
                     try:
                         size = os.path.getsize(path)
                     except OSError:
                         continue
                     if path not in seen:
                         # Neu entdeckte Datei: bei aktiviertem Live-Modus SOFORT
-                        # prüfen, ob sie streambar ist -- nur bei der allerersten
-                        # Sichtung, nicht bei jedem Schleifendurchlauf, damit eine
-                        # bereits als "nicht streambar" erkannte Datei nicht
-                        # wiederholt geprüft wird.
+                        # prüfen, ob sie streambar ist.
                         if live_mode_enabled:
-                            probe_result = mp4_probe.probe_mp4_streamability(path)
                             is_ts = path.endswith(".ts")  # MPEG-TS braucht kein moov, grundsätzlich immer streambar
-                            if is_ts or probe_result == mp4_probe.STREAMABLE:
+                            if is_ts:
                                 live_entry = _start_live_source(path, source_name)
                                 if live_entry is not None:
                                     live_sources[path] = live_entry
                                     continue
+                            else:
+                                probe_result = mp4_probe.probe_mp4_streamability(path)
+                                if probe_result == mp4_probe.STREAMABLE:
+                                    live_entry = _start_live_source(path, source_name)
+                                    if live_entry is not None:
+                                        live_sources[path] = live_entry
+                                        continue
+                                elif probe_result == mp4_probe.UNKNOWN:
+                                    # Noch keine endgültige Antwort möglich --
+                                    # NICHT sofort auf Modus 2 festlegen,
+                                    # sondern bei den nächsten Durchläufen
+                                    # weiter beobachten (siehe pending_probe
+                                    # oben).
+                                    pending_probe[path] = now
+                                    continue
+                                # NOT_STREAMABLE fällt durch zu seen[] unten.
                         seen[path] = (size, now)
                     else:
                         old_size, last_change = seen[path]
