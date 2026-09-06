@@ -1377,6 +1377,28 @@ def health():
     Liefert nur 'läuft', keine sensiblen Daten."""
     return {"status": "ok"}, 200
 
+@app.route('/api/watchfolder_live_status')
+@requires_auth
+def api_watchfolder_live_status():
+    """Ob gerade eine Modus-1-Live-Quelle läuft -- die einzige Möglichkeit,
+    das im Dashboard überhaupt zu sehen, da es sich um einen dynamisch vom
+    Watchfolder-Prozess erzeugten CameraAgent handelt, der nie in
+    streams.json steht und daher nirgendwo sonst auftaucht."""
+    status_path = os.path.join(ALERTS_DIR, '.watchfolder_live_status.json')
+    if not os.path.exists(status_path):
+        return json.dumps({'active': []})
+    try:
+        with open(status_path) as f:
+            data = json.load(f)
+        # Veraltete Status-Datei (Watchfolder-Prozess vermutlich abgestürzt,
+        # ohne sauber aufzuräumen) nicht als "aktiv" ausgeben -- eine
+        # gesunde Schleife schreibt alle paar Sekunden neu.
+        if time.time() - data.get('updated_at', 0) > 30:
+            return json.dumps({'active': []})
+        return json.dumps({'active': data.get('active', [])})
+    except Exception:
+        return json.dumps({'active': []})
+
 @app.route('/api/storage_status')
 @requires_auth
 def api_storage_status():

@@ -38,6 +38,7 @@
                 <i class="fa-solid fa-chevron-down chevron"></i>
             </summary>
             <div class="collapse-body">
+                <div id="watchfolderLiveBanner"></div>
                 <div class="streams-grid" id="streamsGrid">
                     {% for stream_obj in streams_full %}
                     {% set stream = stream_obj.name %}
@@ -3285,6 +3286,24 @@
                 .catch(err => console.error('Status fetch failed:', err));
         }
         setInterval(updateSystemStatus, 3000);
+
+        function loadWatchfolderLiveStatus() {
+            const el = document.getElementById('watchfolderLiveBanner');
+            fetch('/api/watchfolder_live_status').then(r => r.json()).then(data => {
+                const active = data.active || [];
+                if (active.length === 0) { el.innerHTML = ''; return; }
+                el.innerHTML = active.map(a => {
+                    const since = new Date(a.started_at * 1000).toLocaleTimeString();
+                    return `<div class="watchfolder-live-badge">
+                        <i class="fa-solid fa-satellite-dish fa-fade"></i>
+                        <strong>${escapeHtml(a.name)}</strong> is live from the watchfolder (running through the same detection pipeline as a camera) — connected since ${since}. Won't appear below since it isn't a configured camera.
+                    </div>`;
+                }).join('');
+            }).catch(() => { el.innerHTML = ''; });
+        }
+        loadWatchfolderLiveStatus();
+        setInterval(loadWatchfolderLiveStatus, 5000);
+
         document.getElementById('recent-event-list').innerHTML = renderEvents(INITIAL_RECENT, false);
         document.getElementById('archived-event-list').innerHTML = renderEvents(INITIAL_ARCHIVED, true);
         updateSystemStatus();

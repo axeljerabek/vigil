@@ -327,6 +327,25 @@ def process_file(src_path, source_name, delete_source, run_detection, model, log
     return True
 
 
+def _write_live_status(live_sources):
+    """Schreibt eine kleine Status-Datei mit allen aktuell laufenden Modus-1-
+    Live-Quellen -- der einzige Weg für web_ui.py (ein komplett separater
+    Prozess), überhaupt zu wissen, dass gerade ein dynamischer CameraAgent
+    für den Watchfolder läuft. Ohne das gäbe es im Dashboard schlicht keine
+    Möglichkeit zu sehen, ob Modus 1 überhaupt aktiv ist, außer im Log zu
+    suchen."""
+    status_path = os.path.join(ALERTS_DIR, ".watchfolder_live_status.json")
+    try:
+        entries = [
+            {"name": entry["stream_name"], "source_path": path, "started_at": entry["started_at"]}
+            for path, entry in live_sources.items()
+        ]
+        with open(status_path, "w") as f:
+            json.dump({"active": entries, "updated_at": time.time()}, f)
+    except Exception:
+        pass
+
+
 def _start_live_source(path, source_name, logger=print):
     """Startet Modus 1 für eine neu entdeckte, als streambar erkannte
     Datei: FIFO anlegen, Live-Tail starten, und eine echte CameraAgent-
@@ -364,7 +383,11 @@ def _start_live_source(path, source_name, logger=print):
     agent = CameraAgent(stream_info, half_precision=True)
     agent.start()
     logger(f"🎬 [Watchfolder] '{path}' ist streambar -- läuft jetzt live über '{stream_info['name']}' statt auf Fertigstellung zu warten.")
-    return {"tailer": tailer, "agent": agent, "fifo_path": fifo_path, "last_size": -1, "last_change": time.time()}
+    return {
+        "tailer": tailer, "agent": agent, "fifo_path": fifo_path,
+        "last_size": -1, "last_change": time.time(),
+        "stream_name": stream_info["name"], "started_at": time.time(),
+    }
 
 
 def _stop_live_source(entry, logger=print):
@@ -576,6 +599,11 @@ class WatchFolderAgent(multiprocessing.Process):
                         except OSError:
                             pass
 
+                # Einmal pro Durchlauf reicht -- die Status-Datei muss nur
+                # "irgendwann bald" stimmen, kein Grund, sie an jeder
+                # einzelnen Änderungsstelle im Code separat zu pflegen.
+                _write_live_status(live_sources)
+
                 time.sleep(POLL_INTERVAL_SEC)
         except GracefulShutdown:
             print("🛑 [Watchfolder] Shutdown-Signal empfangen.")
@@ -584,6 +612,7 @@ class WatchFolderAgent(multiprocessing.Process):
         finally:
             for entry in live_sources.values():
                 _stop_live_source(entry)
+            _write_live_status({})
             print("🛑 [Watchfolder] Prozess beendet.")
 
 
