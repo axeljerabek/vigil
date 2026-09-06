@@ -544,6 +544,7 @@ def api_ask():
 
 
 
+@app.route('/api/filter_events')
 @requires_auth
 def api_filter_events():
     """Durchsucht den KOMPLETTEN Bestand (nicht nur die im Dashboard geladenen/
