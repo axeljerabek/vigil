@@ -1036,7 +1036,7 @@
 
     <!-- Lightbox für aufgezeichnete Videos -->
     <div id="lightbox" class="lightbox" onclick="closeLightbox(event)">
-        <div class="lightbox-content" onclick="event.stopPropagation()">
+        <div class="lightbox-content" id="lightboxContent" onclick="event.stopPropagation()">
             <span class="close-btn" onclick="closeLightbox(event)"><i class="fa-solid fa-xmark"></i></span>
             <div class="lightbox-video-wrap">
                 <button type="button" class="lightbox-nav-arrow lightbox-nav-prev" id="lightboxPrevBtn" onclick="navigateLightbox(-1)" title="Previous recording (←)"><i class="fa-solid fa-chevron-left"></i></button>
@@ -3385,7 +3385,11 @@
 
         function renderLightboxMetadata(ev) {
             const box = document.getElementById('lightboxMeta');
-            if (!ev) { box.innerHTML = ''; return; }
+            if (!ev) {
+                box.innerHTML = '';
+                document.getElementById('lightboxContent').classList.remove('topic-matched');
+                return;
+            }
 
             const topicList = (ev.detected_topics && ev.detected_topics.length)
                 ? ev.detected_topics
@@ -3406,6 +3410,7 @@
                 : '';
 
             box.innerHTML = topicLine + peopleLine;
+            document.getElementById('lightboxContent').classList.toggle('topic-matched', topicList.length > 0);
         }
 
         function closeLightbox(e) {
