@@ -1046,16 +1046,17 @@
             <div id="loader" class="loader"></div>
             <div id="status-text"></div>
             <div class="player-controls speed-controls">
-                <button onclick="setSpeed(0.1, this)">0.1x</button>
-                <button onclick="setSpeed(0.25, this)">0.25x</button>
-                <button onclick="setSpeed(0.5, this)">0.5x</button>
-                <button onclick="setSpeed(1.0, this)" class="active" id="defaultSpeedBtn">1x</button>
-                <button onclick="setSpeed(2.0, this)">2x</button>
-                <button onclick="setSpeed(4.0, this)">4x</button>
-                <button onclick="setSpeed(8.0, this)">8x</button>
-                <button onclick="setSpeed(16.0, this)">16x</button>
+                <button data-speed="0.1" onclick="setSpeed(0.1, this)">0.1x</button>
+                <button data-speed="0.25" onclick="setSpeed(0.25, this)">0.25x</button>
+                <button data-speed="0.5" onclick="setSpeed(0.5, this)">0.5x</button>
+                <button data-speed="1" onclick="setSpeed(1.0, this)" class="active" id="defaultSpeedBtn">1x</button>
+                <button data-speed="2" onclick="setSpeed(2.0, this)">2x</button>
+                <button data-speed="4" onclick="setSpeed(4.0, this)">4x</button>
+                <button data-speed="8" onclick="setSpeed(8.0, this)">8x</button>
+                <button data-speed="16" onclick="setSpeed(16.0, this)">16x</button>
             </div>
             <div class="player-controls compact-controls">
+                <button type="button" id="lightboxAutoplayBtn" onclick="toggleAutoplay()"><i class="fa-solid fa-play"></i> Autoplay: On</button>
                 <button onclick="skipTime(-10)" title="Back 10s (Shift+←)"><i class="fa-solid fa-backward"></i> 10s</button>
                 <button onclick="skipTime(10)" title="Forward 10s (Shift+→)">10s <i class="fa-solid fa-forward"></i></button>
                 <a id="downloadLink" href="#" class="btn-download" title="Download video"><i class="fa-solid fa-download"></i> Download</a>
@@ -2592,6 +2593,29 @@
         let currentRecentOrder = [];
         let currentArchivedOrder = [];
 
+        // Autoplay und zuletzt genutzte Geschwindigkeit -- bewusst in
+        // localStorage statt nur im Speicher, damit die Einstellung auch
+        // einen Seiten-Neuladen übersteht. Dies ist die echte, von Flask
+        // ausgelieferte Dashboard-Seite (kein Claude-Artefakt-Sandkasten),
+        // localStorage funktioniert hier ganz normal.
+        let autoplayEnabled = (localStorage.getItem('vigil_autoplay') ?? 'true') === 'true';
+        let lastPlaybackSpeed = parseFloat(localStorage.getItem('vigil_playback_speed') || '1.0');
+
+        function toggleAutoplay() {
+            autoplayEnabled = !autoplayEnabled;
+            localStorage.setItem('vigil_autoplay', String(autoplayEnabled));
+            _updateAutoplayBtn();
+        }
+
+        function _updateAutoplayBtn() {
+            const btn = document.getElementById('lightboxAutoplayBtn');
+            if (!btn) return;
+            btn.classList.toggle('active', autoplayEnabled);
+            btn.innerHTML = autoplayEnabled
+                ? '<i class="fa-solid fa-play"></i> Autoplay: On'
+                : '<i class="fa-solid fa-pause"></i> Autoplay: Off';
+        }
+
         // Welche Beschreibungen der Nutzer aufgeklappt hat — muss über den 3s-
         // Poll hinweg erhalten bleiben, sonst klappt renderEvents() (das bei
         // jedem Poll das komplette innerHTML neu aufbaut) alles wieder zu,
@@ -3341,14 +3365,20 @@
             videoPlayer.onloadeddata = () => {
                 loader.style.display = 'none';
                 statusText.innerText = '';
-                videoPlayer.play().catch(e => { statusText.innerText = 'Playback paused. Click play.'; });
+                if (autoplayEnabled) {
+                    videoPlayer.play().catch(e => { statusText.innerText = 'Playback paused. Click play.'; });
+                } else {
+                    statusText.innerText = '';
+                }
             };
             videoPlayer.onerror = () => {
                 loader.style.display = 'none';
                 statusText.innerText = 'Error loading file.';
             };
 
-            setSpeed(1.0, document.getElementById('defaultSpeedBtn'));
+            const speedBtn = document.querySelector(`.speed-controls button[data-speed="${lastPlaybackSpeed}"]`) || document.getElementById('defaultSpeedBtn');
+            setSpeed(lastPlaybackSpeed, speedBtn);
+            _updateAutoplayBtn();
             updateLightboxNavButtons();
             lightbox.classList.add('active');
         }
@@ -3389,6 +3419,8 @@
 
         function setSpeed(rate, btn) {
             videoPlayer.playbackRate = rate;
+            lastPlaybackSpeed = rate;
+            localStorage.setItem('vigil_playback_speed', String(rate));
             speedBtns.forEach(b => b.classList.remove('active'));
             if (btn) btn.classList.add('active');
         }
@@ -3398,6 +3430,15 @@
         }
 
         document.addEventListener('keydown', function(e) {
+            const confirmModal = document.getElementById('confirmModal');
+            if (confirmModal.classList.contains('active')) {
+                // Bestätigungs-Dialog hat Vorrang vor allem anderen, solange
+                // er offen ist -- schnelles Sichten heißt: Enter bestätigen,
+                // ohne zur Maus greifen zu müssen.
+                if (e.key === "Enter") { e.preventDefault(); _resolveConfirm(true); }
+                if (e.key === "Escape") { e.preventDefault(); _resolveConfirm(false); }
+                return;
+            }
             if (e.key === "Escape") {
                 if (lightbox.classList.contains('active')) closeLightbox();
                 if (liveLightbox.classList.contains('active')) closeLiveView();
@@ -3412,6 +3453,7 @@
                     else navigateLightbox(1);
                 }
                 if (e.key === " ") { e.preventDefault(); videoPlayer.paused ? videoPlayer.play() : videoPlayer.pause(); }
+                if (e.key === "Delete") { e.preventDefault(); deleteEvent(currentLightboxFilename, currentLightboxArchived); }
             }
         });
     </script>
